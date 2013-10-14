@@ -27,34 +27,28 @@
 require 'rubygems'
 require 'json'
 
+# Install basic packages our app will require
+
 include_recipe "git"
-include_recipe "apt"
 include_recipe "nginx"
 include_recipe "python"
 include_recipe "rabbitmq"
-include_recipe "build-essential"
 include_recipe "postgresql::client"
 include_recipe "application"
 include_recipe "memcached"
 
+# Read in and set basic configuration variables
+
 node.default["env_name"] = "#{node.app_name}-env"
 node.default["env_home"] = "#{node.project_root}/#{node.env_name}"
 node.default["app_home"] = "#{node.project_root}/#{node.app_name}"
+settings = Chef::EncryptedDataBagItem.load("config", "config_1")
+settings_string = "import os\n"
+settings.to_hash.each do |key, value|
+	settings_string << "os.environ['#{key}'] = '#{value}'\n"
+end
 
-# a ridiculously roundabout way of getting the node variable into the block
-=begin
-db_line = <<HERE
-			database  "#{node.app_name}"
-			engine  "postgresql_psycopg2"
-			username  "#{node.app_name}"
-			password  "#{node.database_password}"
-HERE
-puts "DB LINE #{db_line}"
-proc_line = "Proc.new { '#{db_line}' }"
-puts "PROcc #{proc_line}"
-node.default[:database] = eval "Proc.new { puts 7777777 }"
-puts "DEFF #{node[:database]}"
-=end
+# Update ubuntu and install necesary packages
 
 execute "Update apt repos" do
    command "apt-get update"
@@ -77,24 +71,18 @@ template "/home/ubuntu/.bashrc" do
     :prompt_4color => node.prompt_color)
 end
 
+=begin
 node.pip_python_packages.each do |pkg|
     execute "install-#{pkg}" do
         command "pip install #{pkg}"
         not_if "[ `pip freeze | grep #{pkg} ]"
     end
 end
+=end
 
+# Insert an nginx template for our site into nginx sites-available,
+# symlink to sites-enabled, disable the default site,  and restart nginx
 
-settings = Chef::EncryptedDataBagItem.load("config", "config_1")
-settings_string = "import os\n"
-settings.to_hash.each do |key, value|
-	settings_string << "os.environ['#{key}'] = '#{value}'\n"
-end
-
-
-# Set up nginx sites-enabled and restart on changes
-
-puts "PTTG #{node.site_domain}"
 template "/etc/nginx/sites-available/#{node.app_name}.conf" do
   source "nginx-conf.erb"
   owner "root"
@@ -131,14 +119,10 @@ application "#{node.app_name}" do
 	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
 	migrate true
 
-	before_symlink do
-		raise "foo"
-	end
-
 	django do
 		requirements "requirements/requirements.txt"
 		settings_template "settings.py.erb"
-		debug true
+		debug false
 		local_settings_file "local_settings.py"
 		collectstatic "collectstatic --noinput"
 		database_host   node["postgresql"]["database_ip"]
@@ -146,15 +130,6 @@ application "#{node.app_name}" do
 		database_engine  "postgresql_psycopg2"
 		database_username  "postgres"
 		database_password  node["postgresql"]["password"]["postgres"]
-=begin
-		database do
-			database "packaginator"
-			engine "postgresql_psycopg2"
-			username "packaginator"
-			password "awesome_password"
-		end
-=end
-		#database_master_role "database_master"
 	end
 
 	gunicorn do
@@ -174,14 +149,9 @@ application "#{node.app_name}" do
 			host "localhost"
 		end
 	end
-
-	nginx_load_balancer do
-		only_if { node['roles'].include? '#{app_name}_load_balancer' }
-		application_port 8080
-		static_files "/static" => "static"
-	end
-
 end
+
+# create a file with our "secret" settings for our Django app
 
 file "/srv/#{node.app_name}/shared/cached-copy/project.settings" do
     content settings_string

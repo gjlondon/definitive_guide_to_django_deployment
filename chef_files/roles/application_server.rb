@@ -22,14 +22,14 @@ default_attributes("site_domain" => domain,
 #                   "settings" => "__init__.py",
                     "ubuntu_packages" => [
                         "bash-completion",
-                        "python-setuptools",
-                        "python-pip",
-                        "python-dev",
-                        "libpq-dev"
+                      #  "python-setuptools",
+                      #  "python-pip",
+                      #  "python-dev",
+                      #  "libpq-dev"
                     ],
-                    "pip_python_packages" => [
-                        "virtualenv",
-                    ],
+ #                   "pip_python_packages" => [
+  #                      "virtualenv",
+   #                 ],
                     "postgresql" => {
                     	"password" => {
                     		"postgres" => postgres_pass

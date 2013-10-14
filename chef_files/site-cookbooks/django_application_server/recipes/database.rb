@@ -18,11 +18,17 @@
 # limitations under the License.
 #
 
+# Install Postgres, a ruby shim to allow chef to operate on Postgres, and
+# configure the Postgres server to use the full resources of the VM
+
 include_recipe "postgresql::ruby"
 include_recipe "postgresql::client"
 include_recipe "postgresql::server"
 include_recipe "postgresql::config_pgtune"
 include_recipe "database"
+
+
+# create our application database
 
 postgresql_connection_info = {
     :host      => '127.0.0.1',
@@ -31,13 +37,13 @@ postgresql_connection_info = {
     :password  => node['postgresql']['password']['postgres']
 }
 
-# create our application database
 database node["postgresql"]["db_name"] do
 	connection postgresql_connection_info
 	provider   Chef::Provider::Database::Postgresql
 	action :create
 end
 
+# restart the cluster to pick up changes
 service 'postgresql' do
   supports :restart => true
   action :restart

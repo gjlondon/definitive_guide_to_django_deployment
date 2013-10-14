@@ -38,15 +38,16 @@ application "#{node.app_name}" do
 	group "nogroup"
 	repository "https://github.com/#{node.repo}.git"
 	revision "master"
-	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
 	migrate true
 	action :deploy
+	#restart_command "sudo -u ubuntu supervisorctl restart all"
 
 	django do
 		requirements "requirements/requirements.txt"
 		settings_template "settings.py.erb"
 		debug true
-		local_settings_file "local_settings.py"
+		settings "debug" => "False"
+		local_settings_file "#{node.app_name}/settings/local_settings.py"
 		collectstatic "collectstatic --noinput"
 		database_host   node["postgresql"]["database_ip"]
 		database_name   node["postgresql"]["database_name"]
@@ -56,6 +57,13 @@ application "#{node.app_name}" do
 
 	end
 
+	after_restart do
+		["", "-celeryd", "-celerycam", "-celerybeat"].each do |slug|
+			supervisor_service "#{node.app_name}#{slug}" do
+				action :restart
+			end
+		end
+	end
 end
 
 

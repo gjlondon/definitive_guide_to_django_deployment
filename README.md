@@ -1,12 +1,12 @@
 #Django in Production - The Definitely Definitive Guide
 
 
-### Like this guide but don't want to actually read it? Hire me to do it for you.
+####Psst! Intimidated by Django deployment? [I'm available for consulting](mailto:george.j.london+consulting@gmail.com).
 
 ## Overview
 
 **By the end of this guide, you should be have a (simple), actually deployed
-  Django website accessible at a public IP.** So anyone in the world will be
+  Django website accessible at a public IP**. So anyone in the world will be
   able to visit "www.yourapp.com" and see a page that says "Hello World!"
 
 You'll go through the following steps:
@@ -14,7 +14,7 @@ You'll go through the following steps:
 1. [Setting up a host server for your webserver and your database](#servers).
 2. [Installing and configuring the services your site will need](#services).
 3. [Automating deployment of your code](#code).
-4. [Setting up monitoring so your site doesn't explode](#monitoring)
+4. Next time: [Going beyond the basics with caching, monitoring etc.](#monitoring)
 
 ##Why This Guide Is Needed
 
@@ -22,35 +22,29 @@ Over the last two years, I've taught myself to program in order to
 build my startup [LinerNotes.com](http://www.linernotes.com). I
 started out expecting that the hardest part would be getting my head
 around the sophisticated algorithmic logic of programming. To my
-surprise, I've actually had to do very little algorithmic work. And Python has existing
-libraries that implement nearly any algorithm better than I could anyway.
-
-Instead, the hardest part has been getting proficient at using the
+surprise, I've actually had to do very little difficult algorithmic work. [[1]](#note_algo) Instead, the hardest part has been getting proficient at using the
 *many* different tools in the programmer's utility belt. From emacs to
 gunicorn, building a real project requires dozens of different
 tools. Theoretically, one can *a priori* reason through a red-black
-tree. But there's just no way to learn emacs without the reading the
+tree but there's just no way to learn emacs without the reading the
 manual. LinerNotes is actually a lot more complicated under the hood
 than it is on the surface, so I've had to read quite a lot of
 manuals.
 
-The point of this guide is to save you some of that trouble. Sometimes trouble is good. Struggling to design and implement an API builds programming acumen. Struggling to
+The point of this guide is to save you some of that trouble. Sometimes trouble is good -- struggling to design and implement an API builds programming acumen. But struggling to
 configure nginx is just a waste of time. I've found many partial
-guides to parts of Django deployment but haven't found any single,
+guides to Django deployment but haven't found any single,
 recently updated resource that lays out the **simple, Pythonic way of
-deploying a Django site in production**. This post will give you an actual production-ready
-deployment setup. But it *won't* introduce you to basic DevOps 101 concepts. I'll
+deploying a Django site in production**. This post will walk you through creating such a set up. But it *won't* introduce you to basic DevOps 101 concepts. I'll
 try to be gentle but won't simplify where doing so would hurt the
 quality of the ultimate deployment.
 
-I'm definitely not the most qualified person to write this post, but
-it looks like I'm the only one dumb enough to try. If you've got
-suggestions about how any part of this process could be better,
-*please* comment (or even better submit a pull request to the Github repo) and I'll update the guide as approriate.
+**Disclaimer**: I'm definitely not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post, **help make it better**. 
+Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
 
 ##Overview of the Final Architecture
 
-Now this site is just a "hello world" app, but this is going to be the most well-implemented, stable, and scalable
+Our example site is just a "hello world" app, but this is going to be the most well-implemented, stable, and scalable
 "hello world" application on the whole world wide web. Here's a diagram of how
 your final architecture will look:
 
@@ -71,8 +65,8 @@ See [below](#services) for a more detailed description of what each component
 actually does.
 
 
-
-##<a id="servers"></a>Set Up the "Physical" Servers
+<a id="servers"></a>
+##Set Up Your Host Servers
 
 ###Set up AWS/EC2
 
@@ -196,11 +190,56 @@ If you create an instance by mistake, you can terminate it with
 
 (You'll have to manually delete the ssh/config entry)
 
+<a id="services"></a>
+##Install and Configure Your Services
 
-##<a id="services"></a>Install and Configure Your Services
+###Make sure your project is set up correctly:
+
+This guide assumes a standard Django 1.5 project layout with a few small tweaks:
+
+* Your settings should be comprised of three files:
+
+        app
+        \--settings
+            \--__init__.py # tells python how to import your settings
+             --base.py # your default settings
+             --local_settings.py # settings that will be dynamically generated from your settings.json. don't track in git
+
+    And your \_\_init\_\_.py should consist of:
+
+        # application_python cookbook expects manage.py in a top level
+        # instead of app level dir, so the relative import can fail
+        try:
+            from .deployment_example_project.deployment_example_project.settings.base import *
+        except ImportError:
+            from deployment_example_project.settings.base import *
+
+        try:
+            from local_settings import *
+        except ImportError:
+            pass
+
+    Our bootstrapping process will create a local_settings.py but to develop locally you'll need to make one manually. (Don't check it into git.)
+
+* We're serving static files with [dj-static](https://github.com/kennethreitz/dj-static). To use dj-static, you need a couple project tweaks:
+
+    In base.py, set
+
+        STATIC_ROOT = 'staticfiles'
+        STATIC_URL = '/static/'
+
+    Modify your wsgi.py:
+
+        from django.core.wsgi import get_wsgi_application
+        from dj_static import Cling
+
+        application = Cling(get_wsgi_application())    
+
+* Your installed apps must contain your project app and also `djcelery`.
+
 
 ###Understand the services
-Our app is made up of a number of services that run
+Our stack is made up of a number of services that run
 semi-independently:
 
 **Gunicorn**: Our WSGI webserver. Gunicorn receives HTTP requests fowarded to it from nginx, executes
@@ -281,7 +320,7 @@ Yes, really. Despite being in Ruby[[7]](#note_5), Chef some great advantages tha
 
 1. It lets us fully automate our deployment. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
 2. It lets us lock the versions for all of our dependencies. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
-3. It lets us stand on the shoulders of giants. Opscode (the creators of Chef) and some great OSS people have put a lot of time into creating ready-to-use Chef "cookbooks" for nearly all oru needs. Remember, *DRPWKBTY* (Don't Repeat People Who Know Better Than You).
+3. It lets us stand on the shoulders of giants. Opscode (the creators of Chef) and some great OSS people have put a lot of time into creating ready-to-use Chef "cookbooks" for nearly all our needs. Remember, *DRW* (Don't Re-Invent the Wheel).
 
 Okay, buckle up. We're going to need to talk a little about how Chef works. But it'll be worth it.
 
@@ -303,7 +342,7 @@ and "django" cookbooks. Opscode (the makers of Chef) provide a bunch
 of pre-packaged and (usually well maintained) cookbooks for common
 tools like git. And although Chef cookbooks can get quite complicated, they are just code and so they can be version controlled with git. These version controlled cookbooks are what we installed with Berkshelf above.
 
-####Chef, make me a serve-which
+####Chef, make me a server-which.
 
 We're going to have two nodes, a webserver and a database.So we'll have three roles:
 
@@ -350,7 +389,7 @@ Now we can use the knife-solo to create an encrypted data bag:
     cd ..
 
 
-Make sure to add "gunicorn" and "djcelery" to your installed apps.
+Make sure to add "djcelery" to your installed apps.
 
 
 Now we're going to use Fabric to tell Chef to bootstrap first out database and then our webserver. Do:
@@ -363,9 +402,77 @@ This will:
 1. Install Chef
 2. Tell Chef to configure the server
 
+A lot of stuff is going to happen so this may take a while. Don't worry if the process seems to pause for a while. But if it exits with an error *please* [create an issue](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/issues) on Github describing what went wrong (or better yet, leave a pull a request to fix it.)
+
+###What is this magic?
+
+Chef actually does *so much* that you might be reluctant to trust it because it seems magic (or because you want to understand the details of your deployment before trusting it.) So here's a rough walk-through of everything the bootstrap scripts do.
+
+####Database
+
+The database role first installs the essential base packages specified in [base.rb](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/blob/master/chef_files/roles/base.rb), i.e. apt, gcc, etc, and sets up our ubuntu admin user with passwordless sudo.
+
+Then we run our custom [database recipe](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/blob/master/chef_files/site-cookbooks/django_application_server/recipes/database.rb) that:
+
+1. Installs Postgres on the server
+2. Modifies the default postgresql.conf settings to take full advantage of the node's resources (dynamically calculated using a cookbook called [ohai](http://docs.opscode.com/ohai.html).)
+3. Tells Postgrs to listen on all ports and accept password authenticated connections from all IP's (but we use Amazon's firewall to only open the Postgres node to connections from within our security group.)
+4. Creates our application database using a password and database name read in from our settings.json file.
+5. Restarts Postgres to pick up the configuration changes.
+
+####Webserver
+
+Again, install base packages per base.rb.
+
+Then runs our main [application server setup recipe](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/blob/master/chef_files/site-cookbooks/django_application_server/recipes/default.rb):
+
+1. Runs Opscode cookbooks to install basic packages, including: git, nginx, python-dev, rabbit-mq, memcached, and postgres-client.
+
+2. Reads configuration variables from our encrypted data bag (made from settings.json)
+
+3. Updates Ubuntu and installs the bash-completion package.
+
+4. Creates a .bashrc from a template.
+
+5. Creates an nginx configuration from a template, load it into nginx's configuration folder  and restart nginx.
+
+6. Deploy our Django app, which consists of:
+
+   * Create a folder called /srv/<APP\_NAME> that will hold our whole deployment
+   
+   * Create a folder called /srv/<APP\_NAME>/shared with will hold our virtualenv and key configuration
+   
+   * Download our latest copy of our Github repo to /srv/<APP\_NAME>/shared/cached-copy
+   
+   * Create a `local_settings.py` file from a template and include information to connect to the database we created above (details loaded from our data bag.)
+   
+   * "Migrate" (i.e. sync) the database with `manage.py syncdb`. The sync command can be overwritten if you want to use [South](http://south.aeracode.org/).
+   
+   * Install all our Python packages with pip from `requirements/requirements.txt`.
+   
+   * Run collectstatic to copy our files into a single static folder
+   
+   * Install gunicorn and create a configuration file from a template. The config file lives at `/srv/<APP\_NAME>/shared/gunicorn_config.py`.
+   
+   * Bind gunicorn to run over a unix socket named after our app
+   
+   * install celery, along with celery's built-in helpers celerycam and celerybeat. Create a configuration file from a template. The config lives at `/srv/<APP\_NAME>/shared/celery_settings.py`.
+   
+   * Create "supervisor" stubs that tell supervisor to manage our gunicorn and celery processes.
+
+   * Copy the 'cached-copy' into a `/srv/<APP\_NAME>/releases/<SHA1\_HASH>` folder'. Then symlink the latest release by symlinking the latest release into `/srv/<APP\_NAME>/current` which is where where the live app ultimately lives.
+   
+
+7. Create a "project.settings" file that contains the sensitive variables (e.g. database password) for our Django app.
+
+**Hopefully this list makes it a bit clearly why we're using Chef**. You certainly *could* do each of these steps by hand, but it would be much more time consuming and error prone.
+    
+
+
+
 ###Make it public.
 
-If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat fab_hosts/webserver.txt`. But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and change your **A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
+If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat fab_hosts/webserver.txt`. But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and **change your A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
 
     ec2-describe-instances | fgrep `cat fab_hosts/webserver.txt` | cut -f17
 
@@ -377,49 +484,18 @@ open port 80 to world and 5432 to hello_world_group
 
 
 
-http://berkshelf.com/
+<a id="code"></a>
+##Automatically Deploy Your Code
 
-
-##<a id="code"></a>Deploy Your Code
-
-Just commit your repo and do
+Well, this is simple. Just commit your repo and do
 
     git push origin master
 
 Back in the deployment guide folder, do:
 
     fab deploy:webserver
-    
-
-##<a id="monitoring"></a>Set Up Monitoring
-
-That's a story...for next time. Also backup.
 
 
-Datadog Monitoring
-------
-
-I use a cool service called Datadog that makes pretty metric dashboards. It also sends an
-alert if there's no CPU activity from the webserver or the database (probably meaning the
-EC2 servers are down.)
-
-You can [look at it here]()
-
-Notifications / PagerDuty
--------------
-
-*PagerDuty* is a website that will call or email you if something goes wrong with a
- server. I've configured it to email/SMS you if anything goes wrong with the site. If you
- get a notication, check to make sure that it's not a false alarm, fix the problem (if
- needed) and reply to PagerDuty that you resolved the issue.
-
-Django also also automatically emits error emails, which I:
-
-1) route to PagerDuty so it automatically sets up an "incident" and SMS's you
-2) sends an email to you with the details of the error
-
-Occasionally these emails are for non-serious issues but there's no easy way to
-filter. Below I've listed a few "non-problems" that you can safely ignore.
 
 
 ##Debugging:
@@ -526,31 +602,46 @@ If that's not enough, check the logs for the service (log dirs should be listed 
 key components above) and see if there is an obvious problem.
 
 
-Static Files
------------
-
-All static files (JS, CSS, images) are served out of Amazon S3 from the
-"linernotes\_static\_public" bucket. If the site suddenly loses all of it's CSS, check
-that S3 is working and that the static files/bucket are in place and working. If Amazon
-for some reason changes the S3 paths, the app defines the static paths in
-
-    /var/www/hello-env/hello/hello//hello/settings/base.py
-
-Under the "STATIC_ROOT" variable.
-
-If you need to modify static files (e.g. edit JS), you can upload new static files to S3
-by running
-
-    python manage.py collectstatic
-
-From the project root directory (wth a virtualenv enabled) or just run the "git\_to\_prod"
-script which includes static collection as a step.
 
 
 
+#Further configuration
+
+##<a id="monitoring"></a>Set Up Monitoring
+
+That's a story...for next time. Also backup.
 
 
-US PG BOUNCER
+###Datadog Monitoring
+
+
+I use a cool service called [Datadog](http://www.datadoghq.com/) that makes pretty metric dashboards. It also sends an
+alert if there's no CPU activity from the webserver or the database (probably meaning the
+EC2 servers are down.)
+
+
+###Notifications / PagerDuty
+
+*PagerDuty* is a website that will call or email you if something goes wrong with a
+ server. I've configured it to email/SMS you if anything goes wrong with the site. If you
+ get a notication, check to make sure that it's not a false alarm, fix the problem (if
+ needed) and reply to PagerDuty that you resolved the issue.
+
+Django also also automatically emits error emails, which I:
+
+1) route to PagerDuty so it automatically sets up an "incident" and SMS's you
+2) sends an email to you with the details of the error
+
+Occasionally these emails are for non-serious issues but there's no easy way to
+filter. Below I've listed a few "non-problems" that you can safely ignore.
+
+##Connection pooling.
+
+As of Django 1.5, Django opens a new Postgres connection for every request, which requires a ~200ms SSL renegotiation. Skip that overhead by using a connection pooler like [django-postgrespool](https://github.com/kennethreitz/django-postgrespool). You can also use [PgBouncer](http://wiki.postgresql.org/wiki/PgBouncer) on your Postgres server to make sure you don't get overwhelmed with incoming connections.
+
+##Cache Settings
+
+A *lot* of what Django does from request to request is redundant. You can hugely increase responsiveness and decrease server load by caching aggressively. Django has built in settings to cache views (but you have to enable caching yourself.) You can also use [cache-machine](https://cache-machine.readthedocs.org/en/latest/) to cache your models and significantly reduce your database load.
 
 ##Bibliography
 [Randall Degges rants on deployment](http://www.rdegges.com/deploying-django/)
@@ -559,19 +650,17 @@ US PG BOUNCER
 
 [Aqiliq on deploying Django on Docker](http://agiliq.com/blog/2013/06/deploying-django-using-docker/)
 
-
-
-
-
 [How to use Knife-Solo and Knife-Solo_data_bags](http://distinctplace.com/infrastructure/2013/08/04/secure-data-bag-items-with-chef-solo/)
 
 ##Notes
-[1]<a href id="note_1"></a> (But *you* should really consider writing a guide to deploying Django
+[1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
+
+[1]<a href id="note_docker" (But *you* should really consider writing a guide to deploying Django
 using Docker so I can link to it.)
 
 [2]<a href id="note_2"></a>For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
 
-[7]<a href id="note_2"></a>Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is a tool called [Salt that's even in Python](http://saltstack.com/community.html)). But Salt seems substantially less mature than Chef at this point.
+[7]<a href id="note_3"></a>Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is a tool called [Salt that's even in Python](http://saltstack.com/community.html)). But Salt seems substantially less mature than Chef at this point.
 
 [3]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
 
@@ -583,6 +672,6 @@ using Docker so I can link to it.)
 [6]<a href id="cred_4"></a> ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/); ["An Experiment With Chef Solo", jamiecurle]("https://github.com/jamiecurle/ubuntu-django-chef-solo-config"); [Kate Heddleston's Talk on Chef at Pycon 2013](http://pyvideo.org/video/1756/chef-automating-web-application-infrastructure); [Honza's django-chef repo](https://github.com/honza/django-chef); [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
 
 
-add net.core.somaxconn=1024 to /etc/sysctl.conf
 
-cache-machine
+
+

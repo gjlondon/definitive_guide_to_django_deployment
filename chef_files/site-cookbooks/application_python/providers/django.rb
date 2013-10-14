@@ -42,7 +42,6 @@ action :before_deploy do
 end
 
 action :before_migrate do
-  raise "fa"
   if new_resource.requirements.nil?
     # look for requirements.txt files in common locations
     [
@@ -79,7 +78,6 @@ action :before_migrate do
 end
 
 action :before_symlink do
-  raise "la"
   if new_resource.collectstatic
     cmd = new_resource.collectstatic.is_a?(String) ? new_resource.collectstatic : "collectstatic --noinput"
     execute "#{::File.join(new_resource.virtualenv, "bin", "python")} manage.py #{cmd}" do
@@ -101,7 +99,6 @@ action :before_symlink do
 end
 
 action :before_restart do
-  raise "ffa"
 end
 
 action :after_restart do

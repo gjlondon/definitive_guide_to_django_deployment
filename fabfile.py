@@ -14,7 +14,8 @@ import time
 # import configuration variables from untracked config file
 aws_cfg = Config(open("aws.cfg"))
 app_settings = json.load(open("settings.json"))
-env.key_filename = os.path.expanduser(os.path.join(key_dir, aws_cfg["key_name"] + ".pem"))
+env.key_filename = os.path.expanduser(os.path.join(aws_cfg["key_dir"],
+                                                   aws_cfg["key_name"] + ".pem"))
 
 
 #-----FABRIC TASKS-----------

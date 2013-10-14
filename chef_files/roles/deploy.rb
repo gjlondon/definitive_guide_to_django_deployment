@@ -25,7 +25,7 @@ default_attributes("site_domain" => domain,
                     	},
                         "database_ip" => database_ip,
                         "database_name" => database_name,
-                    },
+                    }
                     )
 
 run_list "recipe[django_application_server::deploy]"
