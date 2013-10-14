@@ -1,0 +1,3 @@
+{
+  "run_list": ["role[base]", "role[database_master]"]
+}

@@ -1,0 +1,20 @@
+DEBUG = <%= @debug ? "True" : "False" %>
+
+DATABASES = {
+    'default': {
+        'NAME': '<%= @database[:settings][:database] %>',
+        'ENGINE': 'django.db.backends.<%= @database[:settings][:engine] %>',
+        'USER': '<%= @database[:settings][:username] %>',
+        'PASSWORD': '<%= @database[:settings][:password] %>',
+        'HOST': '<%= @database[:host] %>',
+        'PORT': '<%= @database[:settings][:port]  %>',
+    },
+}
+<% if @database[:legacy] -%>
+DATABASE_ENGINE = DATABASES['default']['ENGINE']
+DATABASE_NAME = DATABASES['default']['NAME']
+DATABASE_USER = DATABASES['default']['USER']
+DATABASE_PASSWORD = DATABASES['default']['PASSWORD']
+DATABASE_HOST = DATABASES['default']['HOST']
+DATABASE_PORT = DATABASES['default']['PORT']
+<% end -%>

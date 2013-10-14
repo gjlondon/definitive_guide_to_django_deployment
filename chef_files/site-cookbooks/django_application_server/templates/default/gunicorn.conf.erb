@@ -1,0 +1,11 @@
+[program:gunicorn]
+
+command=<%= @project_env %>/bin/gunicorn_django -c <%= @conf %> -b unix:/tmp/gunicorn_<%= @domain %>.sock <%= @settings %> --workers=2 --timeout=30
+user=ubuntu
+group=ubuntu
+log-level=debug
+autostart=true
+autorestart=true
+redirect_stderr=True
+stdout_logfile = /var/log/supervisor/%(program_name)s-stdout.log
+stderr_logfile = /var/log/supervisor/%(program_name)s-stderr.log
