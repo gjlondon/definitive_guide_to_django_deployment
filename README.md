@@ -1,7 +1,7 @@
 #Django in Production - The Definitely Definitive Guide
 
 
-####Psst! Intimidated by Django deployment? [I'm available for consulting](mailto:george.j.london+consulting@gmail.com).
+
 
 # Overview
 
@@ -620,7 +620,7 @@ EC2 servers are down.) And it can also hook into a custom statsd library and let
 
 ###Notifications / PagerDuty
 
-[*PagerDuty*](http://www.pagerduty.com/) is a website that will call or email you if something goes wrong with a
+[PagerDuty](http://www.pagerduty.com/) is a website that will call or email you if something goes wrong with a
  server. I've configured it to email/SMS if anything goes wrong with my site. 
 
 Django by default automatically emits error emails, which I:
@@ -631,7 +631,7 @@ Django by default automatically emits error emails, which I:
 Occasionally these emails are for non-serious issues but there's no easy way to
 filter. It can be a bit chatty if you haven't chased down all the random non-critical errors in your app, but it helps save you from being unaware your site was down for 12 hours.
 
-##Connection pooling.
+##Connection pooling
 
 As of Django 1.5, Django opens a new Postgres connection for every request, which requires a ~200ms SSL renegotiation. Skip that overhead by using a connection pooler like [django-postgrespool](https://github.com/kennethreitz/django-postgrespool). You can also use [PgBouncer](http://wiki.postgresql.org/wiki/PgBouncer) on your Postgres server to make sure you don't get overwhelmed with incoming connections.
 
