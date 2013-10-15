@@ -139,10 +139,12 @@ def created_settings_file
     new_resource.database["password"] = new_resource.database_password
     mode "644"
     variables new_resource.settings.clone
-    variables.update :debug => new_resource.debug, :database => {
-      :host => new_resource.database_host,
-      :settings => new_resource.database,
-      :legacy => new_resource.legacy_database_settings
-    }
+    variables.update :debug => new_resource.debug, :allowed_hosts => new_resource.allowed_hosts,  :database => {
+        :host => new_resource.database_host,
+        :settings => new_resource.database,
+        :legacy => new_resource.legacy_database_settings
+      }
+
+
   end
 end

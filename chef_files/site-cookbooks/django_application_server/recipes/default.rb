@@ -117,6 +117,7 @@ application "#{node.app_name}" do
 	repository "https://github.com/#{node.repo}.git"
 	revision "master"
 	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
+	symlinks("local_settings.py"=>"#{node.app_name}/settings/local_settings.py")
 	migrate true
 
 	django do
@@ -129,12 +130,14 @@ application "#{node.app_name}" do
 		database_name   node["postgresql"]["database_name"]
 		database_engine  "postgresql_psycopg2"
 		database_username  "postgres"
+		allowed_hosts "[\"#{node.site_domain}\", \"#{node.ec2_dns}\"]"
 		database_password  node["postgresql"]["password"]["postgres"]
 	end
 
 	gunicorn do
 		only_if { node['roles'].include? 'application_server' }
 		app_module :django
+		#logfile "gunicorn.log"
 		bind "unix:/tmp/gunicorn_#{node.site_domain}.sock"
 	end
 

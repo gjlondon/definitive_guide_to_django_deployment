@@ -5,10 +5,11 @@ settings = Chef::EncryptedDataBagItem.load("config", "config_1")
 postgres_pass = settings["POSTGRES_PASS"]
 db_name = settings["DATABASE_NAME"]
 
-default_attributes(
+override_attributes(
 	:postgresql => {
-		:config => {:listen => '*'},
-		:config_pgtune => {:db_type => "web"},
+		:config => {"listen_addresses" => '*'},
+		:config_pgtune => {:db_type => "web",
+			               :tune_sysctl => true},
 		:password => {"postgres" => postgres_pass},
 		:db_name => db_name,
 		:pg_hba => [{
@@ -19,7 +20,11 @@ default_attributes(
 			:addr => "0.0.0.0/0",
 			:method => 'md5'
 		}]
-	}
+	},
+	"build_essential" => {"compiletime" => true},
+	:sysctl => {:conf_dir => "/etc/sysctl.d",
+		:allow_sysctl_conf=>true}
+
 
 )
 

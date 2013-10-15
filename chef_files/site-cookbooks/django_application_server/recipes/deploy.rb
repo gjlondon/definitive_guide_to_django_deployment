@@ -38,23 +38,22 @@ application "#{node.app_name}" do
 	group "nogroup"
 	repository "https://github.com/#{node.repo}.git"
 	revision "master"
+	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
+	symlinks("local_settings.py"=>"#{node.app_name}/settings/local_settings.py")
 	migrate true
-	action :deploy
-	#restart_command "sudo -u ubuntu supervisorctl restart all"
 
 	django do
 		requirements "requirements/requirements.txt"
 		settings_template "settings.py.erb"
-		debug true
-		settings "debug" => "False"
-		local_settings_file "#{node.app_name}/settings/local_settings.py"
+		debug false
+		local_settings_file "local_settings.py"
 		collectstatic "collectstatic --noinput"
 		database_host   node["postgresql"]["database_ip"]
 		database_name   node["postgresql"]["database_name"]
 		database_engine  "postgresql_psycopg2"
 		database_username  "postgres"
+		allowed_hosts "[\"#{node.site_domain}\", \"#{node.ec2_dns}\"]"
 		database_password  node["postgresql"]["password"]["postgres"]
-
 	end
 
 	after_restart do

@@ -26,6 +26,7 @@ attribute :database_engine, :kind_of => [String, NilClass], :default => nil
 attribute :database_name, :kind_of => [String, NilClass], :default => nil
 attribute :database_username, :kind_of => [String, NilClass], :default => nil
 attribute :database_password, :kind_of => [String, NilClass], :default => nil
+attribute :allowed_hosts, :kind_of => [String, NilClass], :default => nil
 attribute :packages, :kind_of => [Array, Hash], :default => []
 attribute :requirements, :kind_of => [NilClass, String, FalseClass], :default => nil
 attribute :legacy_database_settings, :kind_of => [TrueClass, FalseClass], :default => false

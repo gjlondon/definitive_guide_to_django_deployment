@@ -3,7 +3,7 @@
 
 ####Psst! Intimidated by Django deployment? [I'm available for consulting](mailto:george.j.london+consulting@gmail.com).
 
-## Overview
+# Overview
 
 **By the end of this guide, you should be have a (simple), actually deployed
   Django website accessible at a public IP**. So anyone in the world will be
@@ -52,7 +52,7 @@ your final architecture will look:
 
 Basically, users send HTTP requests to your server, which are intercepted and
 routed by the nginx webserver program. Requests for dynamic content will be routed to
-your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html)[[1]](#cred_3) server (Gunicorn) and requests for static content will be served
+your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html) [[2]](#cred_3) server (Gunicorn) and requests for static content will be served
 directly off the server's file system. Gunicorn has a few helpers, memcached and celery,
 which respectively offer a cache for repetitive tasks and an asynchronous queue
 for long-running tasks.
@@ -61,12 +61,12 @@ We've also got our Postgres database (for all your lovely models) which we run o
 separate EC2 server. You *can* run Postgres on the same VM, but putting it on a
 separate box will avoid resource contention and make your app more scalable.
 
-See [below](#services) for a more detailed description of what each component
+See [below](#understand_services) for a more detailed description of what each component
 actually does.
 
 
 <a id="servers"></a>
-##Set Up Your Host Servers
+#Set Up Your Host Servers
 
 ###Set up AWS/EC2
 
@@ -74,11 +74,11 @@ Since this guide is trying to get you to an actual publicly accessible site,
 we're going to go ahead and build our site on the smallest, freest Amazon Elastic Compute Cloud
 (EC2) instance available, the trusty "micro". If you don't want to use
 EC2, you can set up a local virtual machine on your laptop using 
-[Vagrant](http://www.vagrantup.com/). I'm intrigued by the
-[Docker project](https://www.docker.io/) that claims to allow deployment of
+[Vagrant](http://www.vagrantup.com/). I'm also intrigued by the
+[Docker project](https://www.docker.io/) -- it claims to allow deployment of
 whole application components in platform agnostic "containers." But Docker
 itself says it's not stable enough for production; who am I to
-disagree?[[2]](#note_1)
+disagree?[[3]](#note_docker)
 
 Anyway, we're going to use EC2 to set up the smallest possible host for our webserver and another
 one for our database.
@@ -87,7 +87,7 @@ For this tutorial, you'll need an existing EC2 account. There are [many tutorial
 
 Python has a very nice library called [boto](https://github.com/boto/boto) for administering AWS
 from within code. And another nice tool called [Fabric](http://docs.fabfile.org/en/1.7/) for creating
-command-line directives that execute Python code that can itself execute
+command-line directives that execute Python code that can *itself* execute
 shell commands on local or remote servers. We're going to use Fabric
 to definite all of our administrative operations, from
 creating/bootstrapping servers up to pushing code. I've read that Chef (which we'll use below) also has a [plugin to launch EC2 servers](http://docs.opscode.com/plugin_knife_ec2.html) but I'm going to prefer boto/Fabric because they give us the option of embedding all our "command" logic into Python and editing it directly as needed.
@@ -106,18 +106,19 @@ on your laptop. But just to check:
     virtualenv --version
 
 This process requires a number of Python dependencies which we'll
-install into a virtualenv (but won't track wtih git):[[3]](#note_2)
+install into a virtualenv (but won't track wtih git):[[4]](#note_2)
 
     virtualenv django_deployment_env
     source django_deployment_env/bin/activate
     # install all our neccesary dependencies from a requirements file
     pip install -r requirements.txt
+
     # or, for educational purposes, individually
     pip install boto
     pip install fabric
     pip install awscli
 
-The github repo includes a fabfile.py[[4]](#cred_1) which provides all the
+The github repo includes a fabfile.py[[5]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
 to read, so try to follow along with what each command is doing.
 
@@ -130,10 +131,11 @@ files which are not tracked by VCS.
     aws_access_key_id: <YOUR KEY HERE>
     aws_secret_access_key: <YOUR SECRET KEY HERE>
     region: "<YOUR REGION HERE, e.g. us-east-1>"
-    key_name: hello_world_key
+    key_name: <YOUR EC2 KEY NAME>
     key_dir: "~/.ec2"
-    group_name: hello_world_group
+    group_name: <YOUR SECURITY GROUP NAME>
     ssh_port: 22
+    instance_type: "t1.micro
     ubuntu_lts_ami: "ami-d0f89fb9"' > aws.cfg
     echo "aws.cfg" >> .gitignore
 
@@ -149,8 +151,14 @@ the AWS command line interface (CLI) directly:
     aws_secret_access_key = <YOUR SECRET KEY HERE>
     region = <YOUR REGION HERE, e.g. us-east-1>' > ~/.aws/config
 
+**We're also going to create a settings file that contains all the configuration for our actual app.** 
 
-Now we're going to use a Fabric directive to setup our AWS account[[5]](#cred_2) by:
+    touch settings.json
+    echo "settings.json" >> .gitignore
+
+**Do not track the settings.json file in git.**
+
+Now we're going to use a Fabric directive to setup our AWS account [[6]](#cred_2) by:
 
 1. Configuring a keypair ssh key that will let us log in to our servers
 2. Setup a security group that defines access rules to our servers
@@ -191,7 +199,13 @@ If you create an instance by mistake, you can terminate it with
 (You'll have to manually delete the ssh/config entry)
 
 <a id="services"></a>
-##Install and Configure Your Services
+#Install and Configure Your Services
+
+We need a project to deploy. Your easiest option is to just clone the sample project I've created:
+
+    git clone git@github.com:rogueleaderr/django_deployment_example_project.git
+
+If you don't do that, then you need to...
 
 ###Make sure your project is set up correctly:
 
@@ -210,16 +224,16 @@ This guide assumes a standard Django 1.5 project layout with a few small tweaks:
         # application_python cookbook expects manage.py in a top level
         # instead of app level dir, so the relative import can fail
         try:
-            from .deployment_example_project.deployment_example_project.settings.base import *
+            from .<PROJECT_NAME>.<PROJECT_NAME>.settings.base import *
         except ImportError:
-            from deployment_example_project.settings.base import *
+            from <PROJECT_NAME>.settings.base import *
 
         try:
             from local_settings import *
         except ImportError:
             pass
 
-    Our bootstrapping process will create a local_settings.py but to develop locally you'll need to make one manually. (Don't check it into git.)
+    Our bootstrapping process will create a local_settings.py but to develop locally you'll need to make one manually with your database info etc. (Don't check it into git.)
 
 * We're serving static files with [dj-static](https://github.com/kennethreitz/dj-static). To use dj-static, you need a couple project tweaks:
 
@@ -237,7 +251,7 @@ This guide assumes a standard Django 1.5 project layout with a few small tweaks:
 
 * Your installed apps must contain your project app and also `djcelery`.
 
-
+<a id="understand_services"></a>
 ###Understand the services
 Our stack is made up of a number of services that run
 semi-independently:
@@ -281,11 +295,11 @@ Chef can be a bit intimidating. It provides an entire Ruby-based
 domain specific language (DSL) for expressing configuration. And it
 also provides a whole system (Chef server) for controlling the
 configuration of remote servers (a.k.a. "nodes") from a central location. The DSL is
-unavoidable, but we can make things a bit simpler by using "Chef Solo", a stripped down version of Chef that does away with the whole central server and leaves us with
+unavoidable but we can make things a bit simpler by using "Chef Solo", a stripped down version of Chef that does away with the whole central server and leaves us with
 just a single script that we run on our remote servers to bootstrap our
 configuration.
 
-(Hat tip to several authors for blog posts about using Chef for Django[[6]](#cred_4))
+(Hat tip to several authors for blog posts about using Chef for Django[[7]](#cred_4))
 
 ####Set up Chef
 
@@ -306,17 +320,9 @@ Install some tools that simplify working with Chef ([Knife Solo](https://github.
     # Ruby requires rehashing to use command line options
     rbenv rehash
 
-Use Berkshelf to install the cookbooks we'll need:
-
-    cd chef_files
-    # tell Berkshelf to install cookbooks into our folder instead of ~/.berkshelf
-    export BERKSHELF_PATH=chef_files
-    berks install
-    cd ..
-
 ####Wait, a complicated ruby tool? Really?
 
-Yes, really. Despite being in Ruby[[7]](#note_5), Chef some great advantages that make it worth learning (at least enough to follow this guide.)
+Yes, really. Despite being in Ruby[[8]](#note_salt), Chef some great advantages that make it worth learning (at least enough to follow this guide.)
 
 1. It lets us fully automate our deployment. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
 2. It lets us lock the versions for all of our dependencies. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
@@ -340,17 +346,18 @@ which cookbooks should be used on a given server. So for example, we
 can define a "webserver" role and tell Chef to use the "git", "nginx"
 and "django" cookbooks. Opscode (the makers of Chef) provide a bunch
 of pre-packaged and (usually well maintained) cookbooks for common
-tools like git. And although Chef cookbooks can get quite complicated, they are just code and so they can be version controlled with git. These version controlled cookbooks are what we installed with Berkshelf above.
+tools like git. And although Chef cookbooks can get quite complicated, they are just code and so they can be version controlled with git.
 
-####Chef, make me a server-which.
+####Chef, [make me a server-which](http://xkcd.com/149/).
 
-We're going to have two nodes, a webserver and a database.So we'll have three roles:
+We're going to have two nodes, a webserver and a database. We'll have four roles:
 
 1. base.rb (common configuration that both will need, like apt and git)
 2. application_server.rb (webserver configuration)
 3. database.rb (database configuration)
+4. deploy.rb (to save time, a stripped down role that just deploys app code to the app server)
 
-The role definitions live in `chef_files/roles`. Now we just need to tell Chef which roles apply to which nodes, and we do that in our chef\_files/nodes folder in files named "{node name}\_node.json".
+The role definitions live in `chef_files/roles`. Now we just need to tell Chef which roles apply to which nodes, and we do that in our chef\_files/nodes folder in files named "{node name}\_node.json". If you use names other than "webserver" and "database" for your nodes, **you must rename these node files.**
 
 Any production Django installation is going to have some sensitive
 values (e.g. database passwords). Chef has a construct called *data
@@ -360,7 +367,22 @@ system (VCS). Knife solo lets us create a databag and encrypt
 it. Fabric will automatically upload our databags to the server where
 they'll be accessible to our Chef solo recipe.
 
-First, we need an encryption key (which we will *NOT* store in Github):
+Start by loading the values we need into our settings.json file. 
+
+    echo "{
+    'id': 'config_1',
+    'POSTGRES_PASS': '<YOUR DB PASSWORD>',
+    'DEBUG': 'False',
+    'DOMAIN': '<YOUR DOMAIN NAME>',
+    'APP_NAME': '<YOUR APP NAME>',
+    'DATABASE_NAME': '<YOUR DATABASE NAME>',
+    'REPO': '<YOUR GITHUB REPO NAME>',
+    'GITHUB_USER': '<YOUR GITHUB USERNAME>',
+    'DATABASE_IP': '`cat fab_hosts/database.txt`',
+    'EC2_DNS': '`cat fab_hosts/webserver.txt`'
+    }" > settings.json
+    
+Now we need an encryption key (which we will *NOT* store in Github):
 
     cd chef_files
     openssl rand -base64 512 > data_bag_key
@@ -368,31 +390,15 @@ First, we need an encryption key (which we will *NOT* store in Github):
     # if you aren't using my repo's .gitingore, add the key
     echo "chef_files/data_bag_key" >> .gitignore
 
-Open `settings.json` and set your database password and IP (plus whatever other private settings you might want). It should look something like:
 
-    {
-    "id": "config_1",
-    "POSTGRES_PASS": "postgres",
-    "DEBUG": "False",
-    "DOMAIN": "deployment_example_project.com",
-    "APP_NAME": "deployment_example_project",
-    "DATABASE_NAME": "deployment_example_project",
-    "REPO": "django_deployment_example_project",
-    "GITHUB_USER": "rogueleaderr",
-    "DATABASE_IP": "ec2-54-221-3-78.compute-1.amazonaws.com"
-    }
-
-Now we can use the knife-solo to create an encrypted data bag:
+Now we can use the knife-solo to create an encrypted data bag from our settings.json file:
 
     cd chef_files
     knife solo data bag create config config_1 --json-file ../settings.json
     cd ..
 
-
-Make sure to add "djcelery" to your installed apps.
-
-
-Now we're going to use Fabric to tell Chef to bootstrap first out database and then our webserver. Do:
+Our `chef_files` repo contains a file `Berksfile` that lists all the cookbooks we are going to install on our server, along with specific versions. Knife solo will install all of these with a tool called [Berkshelf](http://berkshelf.com/), which I assume is named after [this](http://i.qkme.me/3pjyup.jpg). If a cookbook becomes dated, just upgrade the version number in `chef_files/Berksfile`.
+Now we're going to use Fabric to tell Chef to first bootstrap our database and then bootstrap our webserver. Do:
 
     fab bootstrap:database
     fab bootstrap:webserver
@@ -406,7 +412,7 @@ A lot of stuff is going to happen so this may take a while. Don't worry if the p
 
 ###What is this magic?
 
-Chef actually does *so much* that you might be reluctant to trust it because it seems magic (or because you want to understand the details of your deployment before trusting it.) So here's a rough walk-through of everything the bootstrap scripts do.
+Chef actually does *so much* that you might be reluctant to trust it. You may(/should) want to understand the details of your deployment. Or you may just distrust Ruby-scented magic. So here's a rough walk-through of everything the bootstrap scripts do.
 
 ####Database
 
@@ -415,9 +421,13 @@ The database role first installs the essential base packages specified in [base.
 Then we run our custom [database recipe](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/blob/master/chef_files/site-cookbooks/django_application_server/recipes/database.rb) that:
 
 1. Installs Postgres on the server
-2. Modifies the default postgresql.conf settings to take full advantage of the node's resources (dynamically calculated using a cookbook called [ohai](http://docs.opscode.com/ohai.html).)
-3. Tells Postgrs to listen on all ports and accept password authenticated connections from all IP's (but we use Amazon's firewall to only open the Postgres node to connections from within our security group.)
+
+2. Modifies the default postgresql.conf settings to take full advantage of the node's resources (dynamically calculated using a cookbook called [ohai](http://docs.opscode.com/ohai.html).) Changes the Linux shmmax/shmall paramaters as necessary.
+
+3. Tells Postgres to listen on all ports and accept password authenticated connections from all IP's (which is okay because we use Amazon's firewall to block any connection to the Postgres node from outside our security group.)
+
 4. Creates our application database using a password and database name read in from our settings.json file.
+
 5. Restarts Postgres to pick up the configuration changes.
 
 ####Webserver
@@ -430,19 +440,17 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
 
 2. Reads configuration variables from our encrypted data bag (made from settings.json)
 
-3. Updates Ubuntu and installs the bash-completion package.
+3. Updates Ubuntu and installs the bash-completion package. Creates a .bashrc from a template.
 
-4. Creates a .bashrc from a template.
+4. Creates an nginx configuration for our site from a template, load it into nginx's configuration folder  and restart nginx.
 
-5. Creates an nginx configuration from a template, load it into nginx's configuration folder  and restart nginx.
+5. Deploy our Django app, which consists of:
 
-6. Deploy our Django app, which consists of:
-
-   * Create a folder called /srv/<APP\_NAME> that will hold our whole deployment
+   * Create a folder called `/srv/<APP_NAME>` that will hold our whole deployment
    
-   * Create a folder called /srv/<APP\_NAME>/shared with will hold our virtualenv and key configuration
+   * Create a folder called `/srv/<APP_NAME>/shared` with will hold our virtualenv and key configuration
    
-   * Download our latest copy of our Github repo to /srv/<APP\_NAME>/shared/cached-copy
+   * Download our latest copy of our Github repo to `/srv/<APP_NAME>/shared/cached-copy`
    
    * Create a `local_settings.py` file from a template and include information to connect to the database we created above (details loaded from our data bag.)
    
@@ -450,55 +458,48 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
    
    * Install all our Python packages with pip from `requirements/requirements.txt`.
    
-   * Run collectstatic to copy our files into a single static folder
+   * Run `manage.py collectstatic` to copy our static files (css, js, images) into a single static folder
    
-   * Install gunicorn and create a configuration file from a template. The config file lives at `/srv/<APP\_NAME>/shared/gunicorn_config.py`.
+   * Install gunicorn and create a configuration file from a template. The config file lives at `/srv/<APP_NAME>/shared/gunicorn_config.py`.
    
-   * Bind gunicorn to run over a unix socket named after our app
+   * Bind gunicorn to talk over a unix socket named after our app
    
-   * install celery, along with celery's built-in helpers celerycam and celerybeat. Create a configuration file from a template. The config lives at `/srv/<APP\_NAME>/shared/celery_settings.py`.
+   * Install celery, along with celery's built-in helpers celerycam and celerybeat. Create a configuration file from a template. The config lives at `/srv/<APP_NAME>/shared/celery_settings.py`.
    
    * Create "supervisor" stubs that tell supervisor to manage our gunicorn and celery processes.
 
-   * Copy the 'cached-copy' into a `/srv/<APP\_NAME>/releases/<SHA1\_HASH>` folder'. Then symlink the latest release by symlinking the latest release into `/srv/<APP\_NAME>/current` which is where where the live app ultimately lives.
+   * Copy the 'cached-copy' into a `/srv/<APP_NAME>/releases/<SHA1_HASH_of_release>` folder'. Then symlink the latest release by symlinking the latest release into `/srv/<APP_NAME>/current` which is where where the live app ultimately lives.
    
 
-7. Create a "project.settings" file that contains the sensitive variables (e.g. database password) for our Django app.
+6. Create a "project.settings" file that contains the sensitive variables (e.g. database password) for our Django app.
 
-**Hopefully this list makes it a bit clearly why we're using Chef**. You certainly *could* do each of these steps by hand, but it would be much more time consuming and error prone.
+**Hopefully this list makes it a bit more clear why we're using Chef**. You certainly *could* do each of these steps by hand but it would be much more time consuming and error-prone.
     
 
 
 
 ###Make it public.
 
-If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat fab_hosts/webserver.txt`. But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and **change your A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
+If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat fab_hosts/webserver.txt`). But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and **change your A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
 
     ec2-describe-instances | fgrep `cat fab_hosts/webserver.txt` | cut -f17
 
 Domain registrars vary greatly on how to change the A-record so check your registrar's instructions.
 
 
-
-open port 80 to world and 5432 to hello_world_group
-
-
-
 <a id="code"></a>
-##Automatically Deploy Your Code
+#Automatically Deploy Your Code
 
 Well, this is simple. Just commit your repo and do
 
     git push origin master
 
-Back in the deployment guide folder, do:
+Then back in the deployment guide folder, do:
 
     fab deploy:webserver
 
 
-
-
-##Debugging:
+#Debugging:
 
 Instructions by Service:
 ----
@@ -567,13 +568,12 @@ Or to check process status, just do
 
     sudo supervisorctl status
 
-
-**WHERE IS LOG DIR?**
+Supervisor routes all logout put from managed processes to `/var/log/supervisor/<process-name-and-long-character-string>`. So if your server is behaving badly you can start there.
 
 I keep a [GNU screen](http://www.gnu.org/software/screen/) active in the log directory so
 I can get there quickly if I need to. You can get there with
 
-    screen -r 26334.pts-3.ip-10-145-149-233
+    screen -r <MY SCREEN>
 
 ###Postgres
 
@@ -643,6 +643,28 @@ As of Django 1.5, Django opens a new Postgres connection for every request, whic
 
 A *lot* of what Django does from request to request is redundant. You can hugely increase responsiveness and decrease server load by caching aggressively. Django has built in settings to cache views (but you have to enable caching yourself.) You can also use [cache-machine](https://cache-machine.readthedocs.org/en/latest/) to cache your models and significantly reduce your database load.
 
+
+##Notes
+[1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
+
+[2]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
+
+[3]<a href id="note_docker"></a> (But *you* should really consider writing a guide to deploying Django
+using Docker so I can link to it.)
+
+[4]<a href id="note_2"></a>For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
+
+[5]<a href id="cred_2"></a> Hat tip to garnaat for
+[his AWS recipe to setup an account with boto](https://github.com/garnaat/paws/blob/master/ec2_launch_instance.py)
+
+[6]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
+
+[7]<a href id="cred_4"></a> ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/); ["An Experiment With Chef Solo", jamiecurle]("https://github.com/jamiecurle/ubuntu-django-chef-solo-config"); [Kate Heddleston's Talk on Chef at Pycon 2013](http://pyvideo.org/video/1756/chef-automating-web-application-infrastructure); [Honza's django-chef repo](https://github.com/honza/django-chef); [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
+
+[8]<a href id="note_salt"></a>Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is a tool called [Salt that's even in Python](http://saltstack.com/community.html)). But Salt seems substantially less mature than Chef at this point.
+
+
+
 ##Bibliography
 [Randall Degges rants on deployment](http://www.rdegges.com/deploying-django/)
 
@@ -651,27 +673,3 @@ A *lot* of what Django does from request to request is redundant. You can hugely
 [Aqiliq on deploying Django on Docker](http://agiliq.com/blog/2013/06/deploying-django-using-docker/)
 
 [How to use Knife-Solo and Knife-Solo_data_bags](http://distinctplace.com/infrastructure/2013/08/04/secure-data-bag-items-with-chef-solo/)
-
-##Notes
-[1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
-
-[1]<a href id="note_docker" (But *you* should really consider writing a guide to deploying Django
-using Docker so I can link to it.)
-
-[2]<a href id="note_2"></a>For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
-
-[7]<a href id="note_3"></a>Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is a tool called [Salt that's even in Python](http://saltstack.com/community.html)). But Salt seems substantially less mature than Chef at this point.
-
-[3]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
-
-[4]<a href id="cred_2"></a> Hat tip to garnaat for
-[his AWS recipe to setup an account with boto](https://github.com/garnaat/paws/blob/master/ec2_launch_instance.py)
-
-[5]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
-
-[6]<a href id="cred_4"></a> ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/); ["An Experiment With Chef Solo", jamiecurle]("https://github.com/jamiecurle/ubuntu-django-chef-solo-config"); [Kate Heddleston's Talk on Chef at Pycon 2013](http://pyvideo.org/video/1756/chef-automating-web-application-infrastructure); [Honza's django-chef repo](https://github.com/honza/django-chef); [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
-
-
-
-
-

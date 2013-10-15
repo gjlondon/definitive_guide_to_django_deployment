@@ -10,6 +10,9 @@ DATABASES = {
         'PORT': '<%= @database[:settings][:port]  %>',
     },
 }
+
+ALLOWED_HOSTS = <%= @allowed_hosts %>
+
 <% if @database[:legacy] -%>
 DATABASE_ENGINE = DATABASES['default']['ENGINE']
 DATABASE_NAME = DATABASES['default']['NAME']

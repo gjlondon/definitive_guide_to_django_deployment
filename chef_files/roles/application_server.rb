@@ -14,22 +14,16 @@ repo = settings["REPO"]
 github_user = settings["GITHUB_USER"]
 database_ip = settings["DATABASE_IP"]
 database_name = settings["DATABASE_NAME"]
+ec2_dns = settings["EC2_DNS"]
 
 default_attributes("site_domain" => domain,
                    "project_root" => "/home/ubuntu/sites",
                    "app_name" => app_name,
                    "repo" => "#{github_user}/#{repo}",
-#                   "settings" => "__init__.py",
                     "ubuntu_packages" => [
                         "bash-completion",
-                      #  "python-setuptools",
-                      #  "python-pip",
-                      #  "python-dev",
-                      #  "libpq-dev"
-                    ],
- #                   "pip_python_packages" => [
-  #                      "virtualenv",
-   #                 ],
+                        ],
+                    "ec2_dns" => ec2_dns,
                     "postgresql" => {
                     	"password" => {
                     		"postgres" => postgres_pass

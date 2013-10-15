@@ -29,8 +29,9 @@ def setup_aws_account():
     # If we get an InvalidKeyPair.NotFound error back from EC2,
     # it means that it doesn't exist and we need to create it.
     try:
-        key = ec2.get_all_key_pairs(keynames=[aws_cfg["key_name"]])[0]
-        print "key name {} already exists".format("key_name")
+        key_name = aws_cfg["key_name"]
+        key = ec2.get_all_key_pairs(keynames=[key_name])[0]
+        print "key name {} already exists".format(key_name)
     except ec2.ResponseError, e:
         if e.code == 'InvalidKeyPair.NotFound':
             print 'Creating keypair: %s' % aws_cfg["key_name"]
@@ -39,7 +40,7 @@ def setup_aws_account():
 
             # Make sure the specified key_dir actually exists.
             # If not, create it.
-            global key_dir
+            key_dir = aws_cfg["key_dir"]
             key_dir = os.path.expanduser(key_dir)
             key_dir = os.path.expandvars(key_dir)
             if not os.path.isdir(key_dir):
@@ -69,8 +70,18 @@ def setup_aws_account():
 
     # Add a rule to the security group to authorize SSH traffic
     # on the specified port.
+    for port in ["80", aws_cfg["ssh_port"]]:
+        try:
+            group.authorize('tcp', port, port, "0.0.0.0/0")
+        except ec2.ResponseError, e:
+            if e.code == 'InvalidPermission.Duplicate':
+                print 'Security Group: %s already authorized' % aws_cfg["group_name"]
+            else:
+                raise
+
+    # postgres authorization
     try:
-        group.authorize('tcp', aws_cfg["ssh_port"], aws_cfg["ssh_port"], "0.0.0.0/0")
+        group.authorize('tcp', 5432, 5432, src_group=group)
     except ec2.ResponseError, e:
         if e.code == 'InvalidPermission.Duplicate':
             print 'Security Group: %s already authorized' % aws_cfg["group_name"]
@@ -79,11 +90,11 @@ def setup_aws_account():
 
 @task
 def create_instance(name, ami=aws_cfg["ubuntu_lts_ami"],
-                    instance_type='t1.micro',
-                    key_name='hello_world_key',
+                    instance_type=aws_cfg["instance_type"],
+                    key_name=aws_cfg["key_name"],
                     key_extension='.pem',
                     key_dir='~/.ec2',
-                    group_name='hello_world_group',
+                    group_name=aws_cfg["group_name"],
                     ssh_port=22,
                     cidr='0.0.0.0/0',
                     tag=None,
