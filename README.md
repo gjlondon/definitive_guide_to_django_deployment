@@ -14,7 +14,8 @@ You'll go through the following steps:
 1. [Setting up a host server for your webserver and your database](#servers).
 2. [Installing and configuring the services your site will need](#services).
 3. [Automating deployment of your code](#code).
-4. Next time: [Going beyond the basics with caching, monitoring etc.](#monitoring)
+4. [Learning what to do when things go wrong](#debug)
+5. Next time: [Going beyond the basics with caching, monitoring etc.](#monitoring)
 
 ##Why This Guide Is Needed
 
@@ -39,7 +40,7 @@ deploying a Django site in production**. This post will walk you through creatin
 try to be gentle but won't simplify where doing so would hurt the
 quality of the ultimate deployment.
 
-**Disclaimer**: I'm definitely not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post, **help make it better**. 
+**Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post, **help make it better**. 
 Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
 
 ##Overview of the Final Architecture
@@ -74,7 +75,7 @@ Since this guide is trying to get you to an actual publicly accessible site,
 we're going to go ahead and build our site on the smallest, freest Amazon Elastic Compute Cloud
 (EC2) instance available, the trusty "micro". If you don't want to use
 EC2, you can set up a local virtual machine on your laptop using 
-[Vagrant](http://www.vagrantup.com/). I'm also intrigued by the
+[Vagrant](http://www.vagrantup.com/) or use your own existing server (you'll have to tweak my scripts a little). I'm also intrigued by the
 [Docker project](https://www.docker.io/) -- it claims to allow deployment of
 whole application components in platform agnostic "containers." But Docker
 itself says it's not stable enough for production; who am I to
@@ -161,14 +162,14 @@ the AWS command line interface (CLI) directly:
 Now we're going to use a Fabric directive to setup our AWS account [[6]](#cred_2) by:
 
 1. Configuring a keypair ssh key that will let us log in to our servers
-2. Setup a security group that defines access rules to our servers
+2. Setting up a security group that defines access rules to our servers
 
 To use our first fabric directive and setup our AWS account, go to the directory where our fabfile lives and
 do
 
     fab setup_aws_account
 
-###Launch EC2 Servers
+###Launch Some EC2 Servers
 
 We're going to launch two Ubuntu 12.04 LTS servers, one for our web host
 and one for our database. We're using Ubuntu because it it seems to be
@@ -301,32 +302,13 @@ configuration.
 
 (Hat tip to several authors for blog posts about using Chef for Django[[7]](#cred_4))
 
-####Set up Chef
-
-First, install Ruby:
-
-    #brew install rbenv (the virtualenv equivalent)
-    echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zshrc # or .bashrc
-    echo 'eval "$(rbenv init -)"' >> ~/.zshrc # or .bashrc
-    rbenv install 1.9.3-p448
-    rbenv global 1.9.3-p448
-    #install bundler, the pip equivalent
-    gem install bundler
-
-Install some tools that simplify working with Chef ([Knife Solo](https://github.com/matschaffer/knife-solo), [Knife Solo Data Bag](https://github.com/thbishop/knife-solo_data_bag), [Berkshelf](http://berkshelf.com/), and [Knife-solo\_data\_bag](https://github.com/thbishop/knife-solo_data_bag):
-
-    # Install all the gems in the file "Gemfile"
-    bundler install
-    # Ruby requires rehashing to use command line options
-    rbenv rehash
-
 ####Wait, a complicated ruby tool? Really?
 
 Yes, really. Despite being in Ruby[[8]](#note_salt), Chef some great advantages that make it worth learning (at least enough to follow this guide.)
 
-1. It lets us fully automate our deployment. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
-2. It lets us lock the versions for all of our dependencies. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
-3. It lets us stand on the shoulders of giants. Opscode (the creators of Chef) and some great OSS people have put a lot of time into creating ready-to-use Chef "cookbooks" for nearly all our needs. Remember, *DRW* (Don't Re-Invent the Wheel).
+1. *It lets us fully automate our deployment*. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
+2. *It lets us lock the versions for all of our dependencies*. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
+3. *It lets us stand on the shoulders of giants*. Opscode (the creators of Chef) and some great OSS people have put a lot of time into creating ready-to-use Chef "cookbooks" for nearly all our needs. Remember, *DRW-EWTMOTWWRS* (Don't Re-Invent the Wheel, Especially When the Maker of the Wheel Was Really Smart).
 
 Okay, buckle up. We're going to need to talk a little about how Chef works. But it'll be worth it.
 
@@ -347,6 +329,27 @@ can define a "webserver" role and tell Chef to use the "git", "nginx"
 and "django" cookbooks. Opscode (the makers of Chef) provide a bunch
 of pre-packaged and (usually well maintained) cookbooks for common
 tools like git. And although Chef cookbooks can get quite complicated, they are just code and so they can be version controlled with git.
+
+
+####Set up Chef
+
+First, install Ruby:
+
+    #brew install rbenv (the virtualenv equivalent)
+    echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zshrc # or .bashrc
+    echo 'eval "$(rbenv init -)"' >> ~/.zshrc # or .bashrc
+    rbenv install 1.9.3-p448
+    rbenv global 1.9.3-p448
+    #install bundler, the pip equivalent
+    gem install bundler
+
+Install some tools that simplify working with Chef ([Knife Solo](https://github.com/matschaffer/knife-solo), [Knife Solo Data Bag](https://github.com/thbishop/knife-solo_data_bag), [Berkshelf](http://berkshelf.com/), and [Knife-solo\_data\_bag](https://github.com/thbishop/knife-solo_data_bag)):
+
+    # Install all the gems in the file "Gemfile"
+    bundler install
+    # Ruby requires rehashing to use command line options
+    rbenv rehash
+
 
 ####Chef, [make me a server-which](http://xkcd.com/149/).
 
@@ -498,7 +501,7 @@ Then back in the deployment guide folder, do:
 
     fab deploy:webserver
 
-
+<a id="debug"></a>
 #Debugging:
 
 Instructions by Service:
@@ -506,7 +509,7 @@ Instructions by Service:
 
 ###Nginx
 
-Nginx is the proxy server that routes HTTP traffic. In 6 months, it has never once gone
+Nginx is the proxy server that routes HTTP traffic. It has never once gone
 down for me. It should start automatically if the webserver restarts.
 
 If you need to start/restart nginx, log in to the webserver and do:
@@ -519,11 +522,20 @@ If nginx misbehaves, logs are at:
 
 If, for some reason, you need to edit the nginx configuration file it's at:
 
-    sudo emacs /etc/nginx/sites-available/hello.conf
+    sudo emacs /etc/nginx/sites-available/<APP_NAME>.conf
+
+
+###RabbitMQ
+
+Another service that's started automatically. I have literally never had to interact
+directly with it. But if can also be restarted by
+
+    sudo service restart rabbitmq
+
 
 ###Memcached
 
-Memcached is also a service and starts automatically if the webserver restarts. The site
+Memcached is also a service and starts automatically if the webserver restarts. Unless you've designed a monstrosity, your site
 should also continue to function if it dies (just be slow). Caching issues can sometimes
 cause weird page content, so if something seems unusually bizarre try flushing the cache
 by restarting memcached:
@@ -535,19 +547,9 @@ could fill up and exhaust the memory on the webserver (I don't have a size cap a
 are very long) but that has never happened so far. If it does, just reset memcached and it
 will clear itself out.
 
-
-###RabbitMQ
-
-Another service that's started automatically. I have literally never had to interact
-directly with it. But if can also be restarted by
-
-    sudo service restart rabbitmq
-
-
 #### To start Gunicorn/Celery:
 
-Gunicorn and the Celery Workers are controlled by *Supervisor*, which is a Linux process runner/controller. Supervisor starts
-Gunicorn and Celery when the EC2 server starts and will automatically restart them if
+Gunicorn and the Celery Workers are controlled by *Supervisor*, which is a Linux process runner/controller. Supervisor will automatically restart them if
 they're terminated abnormally.
 
 The Supervisor configuration is located at:
@@ -568,7 +570,7 @@ Or to check process status, just do
 
     sudo supervisorctl status
 
-Supervisor routes all logout put from managed processes to `/var/log/supervisor/<process-name-and-long-character-string>`. So if your server is behaving badly you can start there.
+Supervisor routes all log output from managed processes to `/var/log/supervisor/<process-name-and-long-character-string>`. So if your server is behaving badly you can start there.
 
 I keep a [GNU screen](http://www.gnu.org/software/screen/) active in the log directory so
 I can get there quickly if I need to. You can get there with
@@ -577,8 +579,8 @@ I can get there quickly if I need to. You can get there with
 
 ###Postgres
 
-Postgres is a very stable program but my configuration can be a bit touchy. It's probably
-the most likely component to give you trouble (and sadly the site becomes totally
+Postgres is a very stable program but can be a bit touchy on a small server under heavy load. It's probably
+the most likely component to give you trouble (and sadly basically your whole site becomes totally
 non-operational if it goes down.)
 
 Postgres runs as a service so if you need to restart it (try not to need to do this) you
@@ -594,74 +596,95 @@ If a disk is 99% full, find big files using
 
     find / -type f -size +10M -exec ls -l {} \;
 
-EC2 instances all have "instance store" disks on /mnt, so you can copy obviously
-suspicious files onto the instance store and let me sort it out later (please make a note
-of what you move and from/to where).
+EC2 instances (larger than our micro type) all have "instance store" disks on /mnt, so you can copy obviously
+suspicious files onto the instance store and let me sort it out later.
 
-If that's not enough, check the logs for the service (log dirs should be listed for all
-key components above) and see if there is an obvious problem.
+If that's not enough, check the logs for the service at `/var/log/postgresql/`
 
 
+<a id="monitoring"></a>
+#[Future Crimes](http://www.linernotes.com/o/1/dfc3217c-4580-480f-983f-3f23f73954da) of Configuration
 
+This guide has gotten long enough for now, so I'm going to see how it's recieved before delving into advanced topics. But here are a few quick suggestions:
 
+##Set Up Monitoring
 
-#Further configuration
-
-##<a id="monitoring"></a>Set Up Monitoring
-
-That's a story...for next time. Also backup.
-
+There are a bunch of open and closed source solutions. They're all a bit more complicated than I'd like to set up. But here's what I personally use:
 
 ###Datadog Monitoring
 
-
-I use a cool service called [Datadog](http://www.datadoghq.com/) that makes pretty metric dashboards. It also sends an
+[Datadog](http://www.datadoghq.com/) makes pretty metric dashboards. It will automatically monitor server CPU/memory/etc status. Datadog can send an
 alert if there's no CPU activity from the webserver or the database (probably meaning the
-EC2 servers are down.)
+EC2 servers are down.) And it can also hook into a custom statsd library and lets you emit/graph whatever metrics you want from anywhere in your app. You just have to decorate your code by hand. 
 
 
 ###Notifications / PagerDuty
 
-*PagerDuty* is a website that will call or email you if something goes wrong with a
- server. I've configured it to email/SMS you if anything goes wrong with the site. If you
- get a notication, check to make sure that it's not a false alarm, fix the problem (if
- needed) and reply to PagerDuty that you resolved the issue.
+[*PagerDuty*](http://www.pagerduty.com/) is a website that will call or email you if something goes wrong with a
+ server. I've configured it to email/SMS if anything goes wrong with my site. 
 
-Django also also automatically emits error emails, which I:
+Django by default automatically emits error emails, which I:
 
-1) route to PagerDuty so it automatically sets up an "incident" and SMS's you
-2) sends an email to you with the details of the error
+1. route to PagerDuty so it automatically sets up an "incident" and SMS's me
+2. sends an email to me with the details of the error
 
 Occasionally these emails are for non-serious issues but there's no easy way to
-filter. Below I've listed a few "non-problems" that you can safely ignore.
+filter. It can be a bit chatty if you haven't chased down all the random non-critical errors in your app, but it helps save you from being unaware your site was down for 12 hours.
 
 ##Connection pooling.
 
 As of Django 1.5, Django opens a new Postgres connection for every request, which requires a ~200ms SSL renegotiation. Skip that overhead by using a connection pooler like [django-postgrespool](https://github.com/kennethreitz/django-postgrespool). You can also use [PgBouncer](http://wiki.postgresql.org/wiki/PgBouncer) on your Postgres server to make sure you don't get overwhelmed with incoming connections.
 
+Apparently Django 1.6 includes a built-in connection pooler.
+
 ##Cache Settings
 
 A *lot* of what Django does from request to request is redundant. You can hugely increase responsiveness and decrease server load by caching aggressively. Django has built in settings to cache views (but you have to enable caching yourself.) You can also use [cache-machine](https://cache-machine.readthedocs.org/en/latest/) to cache your models and significantly reduce your database load.
 
+##Backup
+
+The nice thing about this Chef setup is that if anything goes wrong with your webserver, it might actually be faster to deploy a new one from scratch and fail over than to try to restore your broken server. But you've still **got to back up your database**. Nothing can help you with deleted data. Postgres has a number of options, including *streaming replication* and [*(w)rite(a)head (l)og WAL shipping to S3*](http://blog.opbeat.com/2013/01/07/postgresql-backup-to-s3-part-one/).
+
+##South migrations
+
+Just use them. Also apparently baked into Django 1.6.
+
+#Wrap up
+
+And there you go. You've got a production-ready Django website. It's reasonable secure, easy to update, cheap to run, fully customizable and should be able to easily handle the kind of traffic a new site is likely to get. If you need more power, just shutdown your EC2 instances and upgrade to a larger instance type. Or get fancy by spinning up more webservers and putting a load balancer in front of them. 
+
+Anyway, thanks for making it this far! If you've got any suggestions for how to do anything in this guide better, please leave a comment or a pull request! And if you build any custom Chef code for your own deployment, please consider contributing it back to this guide or to the official [application_python](https://github.com/opscode-cookbooks/application_python) cookbook.
+
+And if you enjoy this kind of material, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
 
 ##Notes
 [1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
 
 [2]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
 
-[3]<a href id="note_docker"></a> (But *you* should really consider writing a guide to deploying Django
-using Docker so I can link to it.)
+[3]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
+using Docker so I can link to it.
 
-[4]<a href id="note_2"></a>For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
+[4]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
 
 [5]<a href id="cred_2"></a> Hat tip to garnaat for
 [his AWS recipe to setup an account with boto](https://github.com/garnaat/paws/blob/master/ec2_launch_instance.py)
 
 [6]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
 
-[7]<a href id="cred_4"></a> ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/); ["An Experiment With Chef Solo", jamiecurle]("https://github.com/jamiecurle/ubuntu-django-chef-solo-config"); [Kate Heddleston's Talk on Chef at Pycon 2013](http://pyvideo.org/video/1756/chef-automating-web-application-infrastructure); [Honza's django-chef repo](https://github.com/honza/django-chef); [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
+[7]<a href id="cred_4"></a> Chef/Django posts:
 
-[8]<a href id="note_salt"></a>Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is a tool called [Salt that's even in Python](http://saltstack.com/community.html)). But Salt seems substantially less mature than Chef at this point.
+* ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/)
+
+* ["An Experiment With Chef Solo", jamiecurle]("https://github.com/jamiecurle/ubuntu-django-chef-solo-config")
+
+* [Kate Heddleston's Talk on Chef at Pycon 2013](http://pyvideo.org/video/1756/chef-automating-web-application-infrastructure)
+
+* [Honza's django-chef repo](https://github.com/honza/django-chef)
+
+* [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
+
+[8]<a href id="note_salt"></a> Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is also a tool called [Salt that's even in Python](http://saltstack.com/community.html). But Salt seems substantially less mature than Chef at this point.
 
 
 
@@ -672,4 +695,4 @@ using Docker so I can link to it.)
 
 [Aqiliq on deploying Django on Docker](http://agiliq.com/blog/2013/06/deploying-django-using-docker/)
 
-[How to use Knife-Solo and Knife-Solo_data_bags](http://distinctplace.com/infrastructure/2013/08/04/secure-data-bag-items-with-chef-solo/)
+[How to use Knife-Solo and Knife-Solo\_data\_bags](http://distinctplace.com/infrastructure/2013/08/04/secure-data-bag-items-with-chef-solo/)
