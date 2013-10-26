@@ -71,15 +71,6 @@ template "/home/ubuntu/.bashrc" do
     :prompt_4color => node.prompt_color)
 end
 
-=begin
-node.pip_python_packages.each do |pkg|
-    execute "install-#{pkg}" do
-        command "pip install #{pkg}"
-        not_if "[ `pip freeze | grep #{pkg} ]"
-    end
-end
-=end
-
 # Insert an nginx template for our site into nginx sites-available,
 # symlink to sites-enabled, disable the default site,  and restart nginx
 
