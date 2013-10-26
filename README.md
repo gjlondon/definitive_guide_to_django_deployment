@@ -1,12 +1,13 @@
-#Django in Production - The Definitely Definitive Guide
+#Idiomatic Django Deployment - The Definitely Definitive Guide
 
+Wow, this guide is long. Why not skip it? [I'm available to freelance](mailto:george.j.london@gmail.com?subject=Help me deploy Django&body=Gee, I'm already writing this email. I guess I might as well hire you.).
 
-
+Or, if you're kind of excited by how long this guide is, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
 
 # Overview
 
-**By the end of this guide, you should be have a (simple), actually deployed
-  Django website accessible at a public IP**. So anyone in the world will be
+**By the end of this guide, you should be have a simple but stable actually deployed
+  Django website accessible at a public URL**. So anyone in the world will be
   able to visit "www.yourapp.com" and see a page that says "Hello World!"
 
 You'll go through the following steps:
@@ -23,24 +24,25 @@ Over the last two years, I've taught myself to program in order to
 build my startup [LinerNotes.com](http://www.linernotes.com). I
 started out expecting that the hardest part would be getting my head
 around the sophisticated algorithmic logic of programming. To my
-surprise, I've actually had to do very little difficult algorithmic work. [[1]](#note_algo) Instead, the hardest part has been getting proficient at using the
+surprise, I've actually had to do very little difficult algorithmic work.[[\*]](#note_algo) Instead, the hardest part has been getting proficient at using the
 *many* different tools in the programmer's utility belt. From emacs to
 gunicorn, building a real project requires dozens of different
 tools. Theoretically, one can *a priori* reason through a red-black
 tree but there's just no way to learn emacs without the reading the
 manual. LinerNotes is actually a lot more complicated under the hood
-than it is on the surface, so I've had to read quite a lot of
+than it looks on the surface and so I've had to read quite a lot of
 manuals.
 
-The point of this guide is to save you some of that trouble. Sometimes trouble is good -- struggling to design and implement an API builds programming acumen. But struggling to
-configure nginx is just a waste of time. I've found many partial
-guides to Django deployment but haven't found any single,
-recently updated resource that lays out the **simple, Pythonic way of
-deploying a Django site in production**. This post will walk you through creating such a set up. But it *won't* introduce you to basic DevOps 101 concepts. I'll
-try to be gentle but won't simplify where doing so would hurt the
-quality of the ultimate deployment.
+The point of this guide is to save you some of that trouble. Sometimes
+trouble is good -- struggling to design and implement an API builds
+programming acumen. But struggling to configure nginx is just a waste
+of time. I've found many partial guides to Django deployment but
+haven't found any single, recently updated resource that lays out the
+**simple, Pythonic way of deploying a Django site in
+production**. This post will walk you through creating such a set
+up. But it *won't* introduce you to basic DevOps 101 concepts.[[\*]](#note_devops)
 
-**Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post, **help make it better**. 
+**Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**. 
 Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
 
 ##Overview of the Final Architecture
@@ -52,15 +54,14 @@ your final architecture will look:
 ![Architecture Diagram](https://raw.github.com/rogueleaderr/definitive_guide_to_django_deployment/master/django_deployment_diagram.png)
 
 Basically, users send HTTP requests to your server, which are intercepted and
-routed by the nginx webserver program. Requests for dynamic content will be routed to
-your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html) [[2]](#cred_3) server (Gunicorn) and requests for static content will be served
+routed by the nginx load balancer. Requests for dynamic content will be routed to
+your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html)[[\*]](#cred_3) server (Gunicorn) and requests for static content will be served
 directly off the server's file system. Gunicorn has a few helpers, memcached and celery,
 which respectively offer a cache for repetitive tasks and an asynchronous queue
 for long-running tasks.
 
 We've also got our Postgres database (for all your lovely models) which we run on a
-separate EC2 server. You *can* run Postgres on the same VM, but putting it on a
-separate box will avoid resource contention and make your app more scalable.
+separate EC2 server.[[\*]](#note_server_balance)
 
 See [below](#understand_services) for a more detailed description of what each component
 actually does.
@@ -72,14 +73,13 @@ actually does.
 ###Set up AWS/EC2
 
 Since this guide is trying to get you to an actual publicly accessible site,
-we're going to go ahead and build our site on the smallest, freest Amazon Elastic Compute Cloud
-(EC2) instance available, the trusty "micro". If you don't want to use
+we're going to go ahead and build our site on the smallest, freest Amazon [EC2](#gloss_ec2) instance available, the trusty "micro". If you don't want to use
 EC2, you can set up a local virtual machine on your laptop using 
 [Vagrant](http://www.vagrantup.com/) or use your own existing server (you'll have to tweak my scripts a little). I'm also intrigued by the
 [Docker project](https://www.docker.io/) -- it claims to allow deployment of
 whole application components in platform agnostic "containers." But Docker
 itself says it's not stable enough for production; who am I to
-disagree?[[3]](#note_docker)
+disagree?[[\*]](#note_docker)
 
 Anyway, we're going to use EC2 to set up the smallest possible host for our webserver and another
 one for our database.
@@ -107,7 +107,7 @@ on your laptop. But just to check:
     virtualenv --version
 
 This process requires a number of Python dependencies which we'll
-install into a virtualenv (but won't track wtih git):[[4]](#note_2)
+install into a virtualenv (but won't track with git):[[\*]](#note_2)
 
     virtualenv django_deployment_env
     source django_deployment_env/bin/activate
@@ -119,14 +119,14 @@ install into a virtualenv (but won't track wtih git):[[4]](#note_2)
     pip install fabric
     pip install awscli
 
-The github repo includes a fabfile.py[[5]](#cred_1) which provides all the
+The github repo includes a fabfile.py[[\*]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
 to read, so try to follow along with what each command is doing.
 
-First, we need to set up Amazon Web Services (AWS) credentials for boto to use. In keeping
+First, we need to set up [AWS](#gloss_aws) credentials for boto to use. In keeping
 with the principles of the [Twelve Factor App](http://12factor.net/)
 we store configuration either in environment variables or in config
-files which are not tracked by VCS.
+files which are not tracked by VCS. You can you AWS access and secret keys on your [AWS security page](https://portal.aws.amazon.com/gp/aws/securityCredentials).
 
     echo '
     aws_access_key_id: <YOUR KEY HERE>
@@ -140,11 +140,11 @@ files which are not tracked by VCS.
     ubuntu_lts_ami: "ami-d0f89fb9"' > aws.cfg
     echo "aws.cfg" >> .gitignore
 
-(An "AMI" is an Amazon Machine Image, and the one we've chosen corresponds to a
-"free-tier" eligible Ubuntu image.)
+
+We're using an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu image.
 
 While we're at it, let's create a config file that will let you use
-the AWS command line interface (CLI) directly:
+the AWS [CLI](#gloss_cli) directly:
 
     mkdir ~/.aws
     echo '
@@ -261,11 +261,10 @@ semi-independently:
   our Django code to produce a response, and returns the response which nginx transmits back to the client.
   
 **Nginx**: Our
-  "[reverse proxy](http://en.wikipedia.org/wiki/Reverse_proxy)"
-  server. Nginx takes requests from the open internet and decides
+  load balancer (a.k.a. "[reverse proxy server](http://en.wikipedia.org/wiki/Reverse_proxy)"). Nginx takes requests from the open internet and decides
   whether they should be passed to Gunicorn, served a static file,
   served a "Gunicorn is down" error page, or even blocked (e.g. to prevent denial-of-service
-  requests.)
+  requests.) If you want to spread your requests across several Gunicorn nodes, it just takes a tiny change to your nginx configuration.
 
 **Memcached**: A simple in-memory key/value caching system. Can save
   Gunicorn a lot of effort regenerating rarely-changed pages or objects.
@@ -293,7 +292,7 @@ programs (sorry Python monogamists!) called Cookbooks that automatically
 install and configure services.
 
 Chef can be a bit intimidating. It provides an entire Ruby-based
-domain specific language (DSL) for expressing configuration. And it
+[DSL](#gloss_dsl) for expressing configuration. And it
 also provides a whole system (Chef server) for controlling the
 configuration of remote servers (a.k.a. "nodes") from a central location. The DSL is
 unavoidable but we can make things a bit simpler by using "Chef Solo", a stripped down version of Chef that does away with the whole central server and leaves us with
@@ -304,7 +303,7 @@ configuration.
 
 ####Wait, a complicated ruby tool? Really?
 
-Yes, really. Despite being in Ruby[[8]](#note_salt), Chef some great advantages that make it worth learning (at least enough to follow this guide.)
+Yes, really. Despite being in Ruby[[8]](#note_salt), Chef has some great advantages that make it worth learning (at least enough to follow this guide.)
 
 1. *It lets us fully automate our deployment*. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
 2. *It lets us lock the versions for all of our dependencies*. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
@@ -317,7 +316,7 @@ configuration. Chef *declares* configuration rather than executing a
 series of steps (the way Fabric does). A recipe is supposed to describe all the resources that
 are available on a server (rather than just invoking installation
 commands.) If a resource is missing when a recipe is run, Chef will
-try to figure out how to install that resource. Recipes are
+try to figure out how to install that resource. If a configuration file has the wrong information, Chef will fix(/brutally overwrite) it. Recipes are
 (supposed to be) *idempotent*, meaning that if you run a recipe and
 then run it again then the second run will have no effects.
 
@@ -347,7 +346,7 @@ Install some tools that simplify working with Chef ([Knife Solo](https://github.
 
     # Install all the gems in the file "Gemfile"
     bundler install
-    # Ruby requires rehashing to use command line options
+    # Ruby requires rehashing to use new command line options
     rbenv rehash
 
 
@@ -365,8 +364,7 @@ The role definitions live in `chef_files/roles`. Now we just need to tell Chef w
 Any production Django installation is going to have some sensitive
 values (e.g. database passwords). Chef has a construct called *data
 bags* for isolating and storing sensitive information. And these bags
-can even be encrypted so they can be stored in a version control
-system (VCS). Knife solo lets us create a databag and encrypt
+can even be encrypted so they can be stored in a [VCS](#gloss_vcs). Knife solo lets us create a databag and encrypt
 it. Fabric will automatically upload our databags to the server where
 they'll be accessible to our Chef solo recipe.
 
@@ -400,7 +398,7 @@ Now we can use the knife-solo to create an encrypted data bag from our settings.
     knife solo data bag create config config_1 --json-file ../settings.json
     cd ..
 
-Our `chef_files` repo contains a file `Berksfile` that lists all the cookbooks we are going to install on our server, along with specific versions. Knife solo will install all of these with a tool called [Berkshelf](http://berkshelf.com/), which I assume is named after [this](http://i.qkme.me/3pjyup.jpg). If a cookbook becomes dated, just upgrade the version number in `chef_files/Berksfile`.
+Our `chef_files` repo contains a file `Berksfile` that lists all the cookbooks we are going to install on our server, along with specific versions. Knife solo will install all of these with a tool called [Berkshelf](http://berkshelf.com/), which I honestly assume is named after [this](http://i.qkme.me/3pjyup.jpg). If a cookbook becomes dated, just upgrade the version number in `chef_files/Berksfile`.
 Now we're going to use Fabric to tell Chef to first bootstrap our database and then bootstrap our webserver. Do:
 
     fab bootstrap:database
@@ -451,7 +449,7 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
 
    * Create a folder called `/srv/<APP_NAME>` that will hold our whole deployment
    
-   * Create a folder called `/srv/<APP_NAME>/shared` with will hold our virtualenv and key configuration
+   * Create a folder called `/srv/<APP_NAME>/shared` with will hold our virtualenv and some key configuration files
    
    * Download our latest copy of our Github repo to `/srv/<APP_NAME>/shared/cached-copy`
    
@@ -471,7 +469,7 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
    
    * Create "supervisor" stubs that tell supervisor to manage our gunicorn and celery processes.
 
-   * Copy the 'cached-copy' into a `/srv/<APP_NAME>/releases/<SHA1_HASH_of_release>` folder'. Then symlink the latest release by symlinking the latest release into `/srv/<APP_NAME>/current` which is where where the live app ultimately lives.
+   * Copy the 'cached-copy' into a `/srv/<APP_NAME>/releases/<SHA1_HASH_of_release>` folder'. Then symlink the latest release into `/srv/<APP_NAME>/current` which is where where the live app ultimately lives.
    
 
 6. Create a "project.settings" file that contains the sensitive variables (e.g. database password) for our Django app.
@@ -510,7 +508,7 @@ Instructions by Service:
 ###Nginx
 
 Nginx is the proxy server that routes HTTP traffic. It has never once gone
-down for me. It should start automatically if the webserver restarts.
+down for me. It should start automatically if the EC2 server restarts.
 
 If you need to start/restart nginx, log in to the webserver and do:
 
@@ -520,9 +518,15 @@ If nginx misbehaves, logs are at:
 
     /var/log/nginx/
 
-If, for some reason, you need to edit the nginx configuration file it's at:
+If, for some reason, you need to look at the nginx conf it's at:
 
     sudo emacs /etc/nginx/sites-available/<APP_NAME>.conf
+
+If you need to edit it, avoid making changes to any conf files on the server, instead change:
+
+    chef_files/site-cookbooks/django_application_server/templates/default/nginx-conf.erb
+
+And rerun the Chef bootstrap process. It's idempotent so it won't change anything else (unless you've been tinkering directly with the server in which case your changes will be "reeducated").
 
 
 ###RabbitMQ
@@ -535,7 +539,7 @@ directly with it. But if can also be restarted by
 
 ###Memcached
 
-Memcached is also a service and starts automatically if the webserver restarts. Unless you've designed a monstrosity, your site
+Memcached is also a service and starts automatically if the EC2 node restarts. Unless you've designed a monstrosity, your site
 should also continue to function if it dies (just be slow). Caching issues can sometimes
 cause weird page content, so if something seems unusually bizarre try flushing the cache
 by restarting memcached:
@@ -543,8 +547,8 @@ by restarting memcached:
     sudo service restart memcached
 
 Memcached is pretty fire and forget...since it's in memory it's theoretically possible it
-could fill up and exhaust the memory on the webserver (I don't have a size cap and ttl's
-are very long) but that has never happened so far. If it does, just reset memcached and it
+could fill up and exhaust the memory on the webserver (I don't have a size cap and I make my TTL's
+very long) but that has never happened so far. If it does, just reset memcached and it
 will clear itself out.
 
 #### To start Gunicorn/Celery:
@@ -649,30 +653,45 @@ The nice thing about this Chef setup is that if anything goes wrong with your we
 
 Just use them. Also apparently baked into Django 1.6.
 
+##Gevent
+
+In my experience, by far the biggest cause of slowness in Django is I/O or network requests (e.g. calling an external API to supply some data for a widget.) By default, Python blocks the thread making the call until it's done. Gunicorn gives you "workers" which run in separate threads, but if you have four workers and they all block waiting for a long database query then your whole site will just hang until a worker is free (or the request times out.)
+
+You can make things *way* faster by using "green threading" via [gevent](http://www.gevent.org/). Green threading is conceptually complicated (and occasionally buggy) but the basic idea is that one thread can contain many "green" threads. One one green thread runs at a time, but if it needs to wait for I/O it cedes control to another green thread. So your server can accomodate *way* more requests by never blocking the gunicorn worker threads.
+
 #Wrap up
 
-And there you go. You've got a production-ready Django website. It's reasonable secure, easy to update, cheap to run, fully customizable and should be able to easily handle the kind of traffic a new site is likely to get. If you need more power, just shutdown your EC2 instances and upgrade to a larger instance type. Or get fancy by spinning up more webservers and putting a load balancer in front of them. 
+**And there you go. You've got a production-ready Django website.** It's reasonable secure, easy to update, cheap to run, fully customizable and should be able to easily handle the kind of traffic a new site is likely to get. If you need more power, just shutdown your EC2 instances and upgrade to a larger instance type. Or get fancy by spinning up more webservers and using the load balancer to route requests among them.
 
 Anyway, thanks for making it this far! If you've got any suggestions for how to do anything in this guide better, please leave a comment or a pull request! And if you build any custom Chef code for your own deployment, please consider contributing it back to this guide or to the official [application_python](https://github.com/opscode-cookbooks/application_python) cookbook.
 
 And if you enjoy this kind of material, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
 
 ##Notes
-[1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
+[\*]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
 
-[2]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
+[\*]<a href id="note_devops"></a> I'll
+try to be gentle but won't simplify where doing so would hurt the
+quality of the ultimate deployment. If you
+don't know what a load balancer or an SSH key is, you're going to have
+a hard time following along. But Google can help you with that. Don't worry, I'll be here when you get back.
 
-[3]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
+[\*]<a href id="cred_3"></a> You *can* run Postgres on the same VM, but putting it on a
+separate box will avoid resource contention and make your app more scalable. You also can run nginx and celery on their own VM's which will make your site *super* scalable. But if you need this guide then you're probably not seeing enough traffic to make that worth the added complexity.
+
+[\*]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
+
+[\*]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
 using Docker so I can link to it.
 
-[4]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
+[\*]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
 
-[5]<a href id="cred_2"></a> Hat tip to garnaat for
+[\*]<a href id="cred_2"></a> Hat tip to garnaat for
 [his AWS recipe to setup an account with boto](https://github.com/garnaat/paws/blob/master/ec2_launch_instance.py)
 
-[6]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
+[\*]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
 
-[7]<a href id="cred_4"></a> Chef/Django posts:
+[\*]<a href id="cred_4"></a> Chef/Django posts:
 
 * ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/)
 
@@ -684,10 +703,22 @@ using Docker so I can link to it.
 
 * [Noah Kantrowitz "Real World Django deployment using Chef](http://blip.tv/djangocon/real-world-django-deployment-using-chef-5572706)
 
-[8]<a href id="note_salt"></a> Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is also a tool called [Salt that's even in Python](http://saltstack.com/community.html). But Salt seems substantially less mature than Chef at this point.
+[*]<a href id="note_salt"></a> Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is also a tool called [Salt that's even in Python](http://saltstack.com/community.html). But Salt seems substantially less mature than Chef at this point.
 
 
+##Glossary
 
+<div id="gloss_ami">AMI</div> -- An "AMI" is an Amazon Machine Image, i.e. a re-loadable snapshot of a configured system.
+
+<div id="#gloss_cli">CLI</div> -- command line interface. Amazon gives us a set of new command line "verbs" to control AWS.
+
+<div id="gloss_ec2">EC2</div> -- Elastic Compute Cloud, Amazon's virtual server farm.
+
+<div id="gloss_aws">AWS</div> -- Amazon Web Services, the umbrella of the many individual cloud services Amazon offers
+
+<div id="gloss_dsl">DSL</div> -- Domain specific language. Aka a crazy mangled version of Ruby customized to describe service configuration.
+
+<div id="gloss_ec2">VCS</div> -- Version control system, e.g. git or SVN or mercurial
 ##Bibliography
 [Randall Degges rants on deployment](http://www.rdegges.com/deploying-django/)
 
