@@ -24,7 +24,7 @@ Over the last two years, I've taught myself to program in order to
 build my startup [LinerNotes.com](http://www.linernotes.com). I
 started out expecting that the hardest part would be getting my head
 around the sophisticated algorithmic logic of programming. To my
-surprise, I've actually had to do very little difficult algorithmic work.[[\*]](#note_algo) Instead, the hardest part has been getting proficient at using the
+surprise, I've actually had to do very little difficult algorithmic work.[[1]](#note_algo) Instead, the hardest part has been getting proficient at using the
 *many* different tools in the programmer's utility belt. From emacs to
 gunicorn, building a real project requires dozens of different
 tools. Theoretically, one can *a priori* reason through a red-black
@@ -40,7 +40,7 @@ of time. I've found many partial guides to Django deployment but
 haven't found any single, recently updated resource that lays out the
 **simple, Pythonic way of deploying a Django site in
 production**. This post will walk you through creating such a set
-up. But it *won't* introduce you to basic DevOps 101 concepts.[[\*]](#note_devops)
+up. But it *won't* introduce you to basic DevOps 101 concepts. See the bottom for a glossary of acronyms and explanatory footnotes (because Github breaks my intra-page links).[[2]](#note_devops)
 
 **Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**. 
 Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
@@ -55,13 +55,13 @@ your final architecture will look:
 
 Basically, users send HTTP requests to your server, which are intercepted and
 routed by the nginx load balancer. Requests for dynamic content will be routed to
-your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html)[[\*]](#cred_3) server (Gunicorn) and requests for static content will be served
+your [WSGI](http://wsgi.readthedocs.org/en/latest/what.html)[[3]](#cred_3) server (Gunicorn) and requests for static content will be served
 directly off the server's file system. Gunicorn has a few helpers, memcached and celery,
 which respectively offer a cache for repetitive tasks and an asynchronous queue
 for long-running tasks.
 
 We've also got our Postgres database (for all your lovely models) which we run on a
-separate EC2 server.[[\*]](#note_server_balance)
+separate EC2 server.[[4]](#note_server_balance)
 
 See [below](#understand_services) for a more detailed description of what each component
 actually does.
@@ -79,7 +79,7 @@ EC2, you can set up a local virtual machine on your laptop using
 [Docker project](https://www.docker.io/) -- it claims to allow deployment of
 whole application components in platform agnostic "containers." But Docker
 itself says it's not stable enough for production; who am I to
-disagree?[[\*]](#note_docker)
+disagree?[[5]](#note_docker)
 
 Anyway, we're going to use EC2 to set up the smallest possible host for our webserver and another
 one for our database.
@@ -107,7 +107,7 @@ on your laptop. But just to check:
     virtualenv --version
 
 This process requires a number of Python dependencies which we'll
-install into a virtualenv (but won't track with git):[[\*]](#note_2)
+install into a virtualenv (but won't track with git):[[6]](#note_2)
 
     virtualenv django_deployment_env
     source django_deployment_env/bin/activate
@@ -119,7 +119,7 @@ install into a virtualenv (but won't track with git):[[\*]](#note_2)
     pip install fabric
     pip install awscli
 
-The github repo includes a fabfile.py[[\*]](#cred_1) which provides all the
+The github repo includes a fabfile.py[[7]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
 to read, so try to follow along with what each command is doing.
 
@@ -299,11 +299,11 @@ unavoidable but we can make things a bit simpler by using "Chef Solo", a strippe
 just a single script that we run on our remote servers to bootstrap our
 configuration.
 
-(Hat tip to several authors for blog posts about using Chef for Django[[7]](#cred_4))
+(Hat tip to several authors for blog posts about using Chef for Django[[8]](#cred_4))
 
 ####Wait, a complicated ruby tool? Really?
 
-Yes, really. Despite being in Ruby[[8]](#note_salt), Chef has some great advantages that make it worth learning (at least enough to follow this guide.)
+Yes, really. Despite being in Ruby[[9]](#note_salt), Chef has some great advantages that make it worth learning (at least enough to follow this guide.)
 
 1. *It lets us fully automate our deployment*. We only need to edit *one* configuration file and run two commands and our *entire stack* configures itself automatically. And if your servers all die you can redeploy from scratch with the same two commands (assuming you backed up your database).
 2. *It lets us lock the versions for all of our dependencies*. Every package installed by this process has its version explicitly specified. So this guide/process may become dated but it should continue to at least basically work for a long time.
@@ -668,30 +668,30 @@ Anyway, thanks for making it this far! If you've got any suggestions for how to 
 And if you enjoy this kind of material, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
 
 ##Notes
-[\*]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
+[1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
 
-[\*]<a href id="note_devops"></a> I'll
+[2]<a href id="note_devops"></a> I'll
 try to be gentle but won't simplify where doing so would hurt the
 quality of the ultimate deployment. If you
 don't know what a load balancer or an SSH key is, you're going to have
 a hard time following along. But Google can help you with that. Don't worry, I'll be here when you get back.
 
-[\*]<a href id="cred_3"></a> You *can* run Postgres on the same VM, but putting it on a
+[3]<a href id="cred_3"></a> You *can* run Postgres on the same VM, but putting it on a
 separate box will avoid resource contention and make your app more scalable. You also can run nginx and celery on their own VM's which will make your site *super* scalable. But if you need this guide then you're probably not seeing enough traffic to make that worth the added complexity.
 
-[\*]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
+[4]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
 
-[\*]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
+[5]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
 using Docker so I can link to it.
 
-[\*]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
+[6]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
 
-[\*]<a href id="cred_2"></a> Hat tip to garnaat for
+[7]<a href id="cred_2"></a> Hat tip to garnaat for
 [his AWS recipe to setup an account with boto](https://github.com/garnaat/paws/blob/master/ec2_launch_instance.py)
 
-[\*]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
+[8]<a href id="cred_1"></a> Hat tip to Martha Kelly for [her post on using Fabric/Boto to deploy EC2](http://marthakelly.github.io/blog/2012/08/09/creating-an-ec2-instance-with-fabric-slash-boto/)
 
-[\*]<a href id="cred_4"></a> Chef/Django posts:
+[9]<a href id="cred_4"></a> Chef/Django posts:
 
 * ["Building a Django App Server with Chef, Eric Holscher"](http://ericholscher.com/blog/2010/nov/8/building-django-app-server-chef/)
 
