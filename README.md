@@ -18,7 +18,7 @@ You'll go through the following steps:
 4. [Learning what to do when things go wrong](#debug)
 5. Next time: [Going beyond the basics with caching, monitoring etc.](#monitoring)
 
-##Why This Guide Is Needed
+###Why This Guide Is Needed
 
 Over the last two years, I've taught myself to program in order to
 build my startup [LinerNotes.com](http://www.linernotes.com). I
@@ -45,7 +45,7 @@ up. But it *won't* introduce you to basic DevOps 101 concepts. See the bottom fo
 **Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**. 
 Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
 
-##Overview of the Final Architecture
+###Overview of the Final Architecture
 
 Our example site is just a "hello world" app, but this is going to be the most well-implemented, stable, and scalable
 "hello world" application on the whole world wide web. Here's a diagram of how
@@ -350,7 +350,7 @@ Install some tools that simplify working with Chef ([Knife Solo](https://github.
     rbenv rehash
 
 
-####Chef, [make me a server-which](http://xkcd.com/149/).
+###Chef, [make me a server-which](http://xkcd.com/149/).
 
 We're going to have two nodes, a webserver and a database. We'll have four roles:
 
@@ -411,11 +411,11 @@ This will:
 
 A lot of stuff is going to happen so this may take a while. Don't worry if the process seems to pause for a while. But if it exits with an error *please* [create an issue](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/issues) on Github describing what went wrong (or better yet, leave a pull a request to fix it.)
 
-###What is this magic?
+####What is this magic?
 
 Chef actually does *so much* that you might be reluctant to trust it. You may(/should) want to understand the details of your deployment. Or you may just distrust Ruby-scented magic. So here's a rough walk-through of everything the bootstrap scripts do.
 
-####Database
+#####Database
 
 The database role first installs the essential base packages specified in [base.rb](https://github.com/rogueleaderr/definitive_guide_to_django_deployment/blob/master/chef_files/roles/base.rb), i.e. apt, gcc, etc, and sets up our ubuntu admin user with passwordless sudo.
 
@@ -431,7 +431,7 @@ Then we run our custom [database recipe](https://github.com/rogueleaderr/definit
 
 5. Restarts Postgres to pick up the configuration changes.
 
-####Webserver
+#####Webserver
 
 Again, install base packages per base.rb.
 
@@ -501,9 +501,6 @@ Then back in the deployment guide folder, do:
 
 <a id="debug"></a>
 #Debugging:
-
-Instructions by Service:
-----
 
 ###Nginx
 
@@ -611,18 +608,18 @@ If that's not enough, check the logs for the service at `/var/log/postgresql/`
 
 This guide has gotten long enough for now, so I'm going to see how it's recieved before delving into advanced topics. But here are a few quick suggestions:
 
-##Set Up Monitoring
+###Set Up Monitoring
 
 There are a bunch of open and closed source solutions. They're all a bit more complicated than I'd like to set up. But here's what I personally use:
 
-###Datadog Monitoring
+####Datadog Monitoring
 
 [Datadog](http://www.datadoghq.com/) makes pretty metric dashboards. It will automatically monitor server CPU/memory/etc status. Datadog can send an
 alert if there's no CPU activity from the webserver or the database (probably meaning the
 EC2 servers are down.) And it can also hook into a custom statsd library and lets you emit/graph whatever metrics you want from anywhere in your app. You just have to decorate your code by hand. 
 
 
-###Notifications / PagerDuty
+####Notifications / PagerDuty
 
 [PagerDuty](http://www.pagerduty.com/) is a website that will call or email you if something goes wrong with a
  server. I've configured it to email/SMS if anything goes wrong with my site. 
@@ -635,25 +632,25 @@ Django by default automatically emits error emails, which I:
 Occasionally these emails are for non-serious issues but there's no easy way to
 filter. It can be a bit chatty if you haven't chased down all the random non-critical errors in your app, but it helps save you from being unaware your site was down for 12 hours.
 
-##Connection pooling
+###Connection pooling
 
 As of Django 1.5, Django opens a new Postgres connection for every request, which requires a ~200ms SSL renegotiation. Skip that overhead by using a connection pooler like [django-postgrespool](https://github.com/kennethreitz/django-postgrespool). You can also use [PgBouncer](http://wiki.postgresql.org/wiki/PgBouncer) on your Postgres server to make sure you don't get overwhelmed with incoming connections.
 
 Apparently Django 1.6 includes a built-in connection pooler.
 
-##Cache Settings
+###Cache Settings
 
 A *lot* of what Django does from request to request is redundant. You can hugely increase responsiveness and decrease server load by caching aggressively. Django has built in settings to cache views (but you have to enable caching yourself.) You can also use [cache-machine](https://cache-machine.readthedocs.org/en/latest/) to cache your models and significantly reduce your database load.
 
-##Backup
+###Backup
 
 The nice thing about this Chef setup is that if anything goes wrong with your webserver, it might actually be faster to deploy a new one from scratch and fail over than to try to restore your broken server. But you've still **got to back up your database**. Nothing can help you with deleted data. Postgres has a number of options, including *streaming replication* and [*(w)rite(a)head (l)og WAL shipping to S3*](http://blog.opbeat.com/2013/01/07/postgresql-backup-to-s3-part-one/).
 
-##South migrations
+###South migrations
 
 Just use them. Also apparently baked into Django 1.6.
 
-##Gevent
+###Gevent
 
 In my experience, by far the biggest cause of slowness in Django is I/O or network requests (e.g. calling an external API to supply some data for a widget.) By default, Python blocks the thread making the call until it's done. Gunicorn gives you "workers" which run in separate threads, but if you have four workers and they all block waiting for a long database query then your whole site will just hang until a worker is free (or the request times out.)
 
@@ -667,7 +664,7 @@ Anyway, thanks for making it this far! If you've got any suggestions for how to 
 
 And if you enjoy this kind of material, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
 
-##Notes
+###Notes
 [1]<a href id="note_algo"></a> And Python has existing libraries that implement nearly any algorithm better than I could anyway.
 
 [2]<a href id="note_devops"></a> I'll
@@ -706,7 +703,7 @@ using Docker so I can link to it.
 [*]<a href id="note_salt"></a> Yes, there are other configuration automation tools. Puppet is widely used, but I find it slightly more confuing and it seems less popular in the Django community. There is also a tool called [Salt that's even in Python](http://saltstack.com/community.html). But Salt seems substantially less mature than Chef at this point.
 
 
-##Glossary
+###Glossary
 
 <div id="gloss_ami">AMI</div> -- An "AMI" is an Amazon Machine Image, i.e. a re-loadable snapshot of a configured system.
 
@@ -719,7 +716,7 @@ using Docker so I can link to it.
 <div id="gloss_dsl">DSL</div> -- Domain specific language. Aka a crazy mangled version of Ruby customized to describe service configuration.
 
 <div id="gloss_ec2">VCS</div> -- Version control system, e.g. git or SVN or mercurial
-##Bibliography
+###Bibliography
 [Randall Degges rants on deployment](http://www.rdegges.com/deploying-django/)
 
 [Rob Golding on deploying Django](http://www.robgolding.com/blog/2011/11/12/django-in-production-part-1---the-stack/)
