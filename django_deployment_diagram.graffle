@@ -7,7 +7,7 @@
 	<key>ApplicationVersion</key>
 	<array>
 		<string>com.omnigroup.OmniGrafflePro</string>
-		<string>139.17.0.185490</string>
+		<string>139.18.0.187838</string>
 	</array>
 	<key>AutoAdjust</key>
 	<true/>
@@ -118,38 +118,23 @@
 	<key>GraphicsList</key>
 	<array>
 		<dict>
+			<key>Bounds</key>
+			<string>{{452, 284}, {95, 39}}</string>
 			<key>Class</key>
-			<string>LineGraphic</string>
-			<key>Head</key>
-			<dict>
-				<key>ID</key>
-				<integer>45</integer>
-			</dict>
+			<string>ShapedGraphic</string>
 			<key>ID</key>
-			<integer>96</integer>
-			<key>Points</key>
-			<array>
-				<string>{475.59454782321291, 357.72660736568048}</string>
-				<string>{449.9687057262496, 335.24524182046309}</string>
-			</array>
-			<key>Style</key>
+			<integer>105</integer>
+			<key>Shape</key>
+			<string>Rectangle</string>
+			<key>Text</key>
 			<dict>
-				<key>stroke</key>
-				<dict>
-					<key>HeadArrow</key>
-					<string>FilledArrow</string>
-					<key>Legacy</key>
-					<true/>
-					<key>LineType</key>
-					<integer>1</integer>
-					<key>TailArrow</key>
-					<string>0</string>
-				</dict>
-			</dict>
-			<key>Tail</key>
-			<dict>
-				<key>ID</key>
-				<integer>101</integer>
+				<key>Text</key>
+				<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
+
+\f0\fs24 \cf0 Django}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -158,14 +143,14 @@
 			<key>Head</key>
 			<dict>
 				<key>ID</key>
-				<integer>101</integer>
+				<integer>97</integer>
 			</dict>
 			<key>ID</key>
-			<integer>95</integer>
+			<integer>96</integer>
 			<key>Points</key>
 			<array>
-				<string>{449.96870586462103, 335.24524182046304}</string>
-				<string>{475.59454760960034, 357.72660736568059}</string>
+				<string>{454.39213463195392, 323.20011458063902}</string>
+				<string>{375.03896855297046, 357.85629818270883}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -184,7 +169,44 @@
 			<key>Tail</key>
 			<dict>
 				<key>ID</key>
-				<integer>45</integer>
+				<integer>105</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>Class</key>
+			<string>LineGraphic</string>
+			<key>Head</key>
+			<dict>
+				<key>ID</key>
+				<integer>105</integer>
+			</dict>
+			<key>ID</key>
+			<integer>95</integer>
+			<key>Points</key>
+			<array>
+				<string>{383.87272530399514, 353.99830094092499}</string>
+				<string>{454.39213466324355, 323.20011456697381}</string>
+			</array>
+			<key>Style</key>
+			<dict>
+				<key>stroke</key>
+				<dict>
+					<key>HeadArrow</key>
+					<string>FilledArrow</string>
+					<key>Legacy</key>
+					<true/>
+					<key>LineType</key>
+					<integer>1</integer>
+					<key>TailArrow</key>
+					<string>0</string>
+				</dict>
+			</dict>
+			<key>Tail</key>
+			<dict>
+				<key>ID</key>
+				<integer>96</integer>
+				<key>Position</key>
+				<real>0.88867795467376709</real>
 			</dict>
 		</dict>
 		<dict>
@@ -199,8 +221,8 @@
 			<integer>92</integer>
 			<key>Points</key>
 			<array>
-				<string>{414.30280379930713, 371.05609619419079}</string>
-				<string>{421.28872337733412, 371.05607089430515}</string>
+				<string>{414.30280379930713, 371.0561400371169}</string>
+				<string>{421.28872337733412, 371.05611914418319}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -228,14 +250,14 @@
 			<key>Head</key>
 			<dict>
 				<key>ID</key>
-				<integer>45</integer>
+				<integer>105</integer>
 			</dict>
 			<key>ID</key>
 			<integer>104</integer>
 			<key>Points</key>
 			<array>
-				<string>{623.45761311624176, 257.55361465184137}</string>
-				<string>{560.27764607277845, 271.24621573758253}</string>
+				<string>{639.67136247368103, 259.32124718597873}</string>
+				<string>{547.47686486801229, 288.37519497534669}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -269,8 +291,8 @@
 			<integer>69</integer>
 			<key>Points</key>
 			<array>
-				<string>{374.88603699008422, 270.32352307334202}</string>
-				<string>{358.36372797128553, 256.23985741472205}</string>
+				<string>{374.88617048073746, 270.32352242523132}</string>
+				<string>{358.36391863401752, 256.2398558462678}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -298,14 +320,14 @@
 			<key>Head</key>
 			<dict>
 				<key>ID</key>
-				<integer>45</integer>
+				<integer>105</integer>
 			</dict>
 			<key>ID</key>
 			<integer>68</integer>
 			<key>Points</key>
 			<array>
-				<string>{466.43917694220954, 249.79559289938837}</string>
-				<string>{445.74977309619487, 270.295950808849}</string>
+				<string>{483.84699490255366, 249.92365536750614}</string>
+				<string>{493.64871856533841, 283.52015410498785}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -339,8 +361,8 @@
 			<integer>67</integer>
 			<key>Points</key>
 			<array>
-				<string>{445.74977347219402, 270.29595080885571}</string>
-				<string>{466.43917637213491, 249.7955928767243}</string>
+				<string>{493.66427027796442, 283.52005325453172}</string>
+				<string>{483.85144396841736, 249.92361263341067}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -359,7 +381,7 @@
 			<key>Tail</key>
 			<dict>
 				<key>ID</key>
-				<integer>45</integer>
+				<integer>105</integer>
 			</dict>
 		</dict>
 		<dict>
@@ -374,8 +396,8 @@
 			<integer>66</integer>
 			<key>Points</key>
 			<array>
-				<string>{358.36386148559717, 256.23985633104081}</string>
-				<string>{374.88593879673067, 270.32352357256269}</string>
+				<string>{358.36397305568579, 256.2398554178622}</string>
+				<string>{374.88613043781203, 270.32352260327247}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -409,8 +431,8 @@
 			<integer>64</integer>
 			<key>Points</key>
 			<array>
-				<string>{272.95391839815545, 228.36693508563934}</string>
-				<string>{212.16049509692408, 220.47110874826936}</string>
+				<string>{272.95391840036558, 228.36693397633852}</string>
+				<string>{212.16049537011625, 220.47110658942859}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -444,8 +466,8 @@
 			<integer>63</integer>
 			<key>Points</key>
 			<array>
-				<string>{212.16049509702341, 220.47110874748449}</string>
-				<string>{272.953918387008, 228.3669405573595}</string>
+				<string>{212.16049537013637, 220.47110658926954}</string>
+				<string>{272.95391839815619, 228.36693508523604}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -488,7 +510,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -516,7 +538,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 ArialMT;}
 {\colortbl;\red255\green255\blue255;\red229\green240\blue254;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -560,7 +582,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -580,7 +602,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -600,7 +622,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -620,7 +642,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -640,7 +662,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -668,7 +690,7 @@
 					<key>Text</key>
 					<dict>
 						<key>Text</key>
-						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+						<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 ArialMT;}
 {\colortbl;\red255\green255\blue255;\red229\green240\blue254;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -707,7 +729,7 @@
 			<key>Text</key>
 			<dict>
 				<key>Text</key>
-				<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf390
+				<string>{\rtf1\ansi\ansicpg1252\cocoartf1187\cocoasubrtf400
 \cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\qc
@@ -871,7 +893,7 @@
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2013-10-14 20:43:24 +0000</string>
+	<string>2013-10-28 06:18:53 +0000</string>
 	<key>Modifier</key>
 	<string>George London</string>
 	<key>NotesVisible</key>
