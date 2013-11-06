@@ -379,9 +379,12 @@ Start by loading the values we need into our settings.json file.
     "DATABASE_NAME": "<YOUR DATABASE NAME>",
     "REPO": "<YOUR GITHUB REPO NAME>",
     "GITHUB_USER": "<YOUR GITHUB USERNAME>",
-    "DATABASE_IP": "`cat fab_hosts/database.txt`",
-    "EC2_DNS": "`cat fab_hosts/webserver.txt`"
-    }' > settings.json
+    "DATABASE_IP": "DB_IP_SLUG",
+    "EC2_DNS": "WEB_IP_SLUG"
+    }' \
+    | sed -e s/DB_IP_SLUG/`cat fab_hosts/database.txt`/ \
+    | sed -e s/WEB_IP_SLUG/`cat fab_hosts/webserver.txt`/ \
+    > settings.json
     
 Now we need an encryption key (which we will *NOT* store in Github):
 
