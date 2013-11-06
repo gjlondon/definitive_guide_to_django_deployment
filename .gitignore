@@ -22,4 +22,4 @@ settings.json
 *.lock
 .#*
 *_old
-*/*/local_settings.py
+*/*/local_settings.pychef_files/data_bag_key

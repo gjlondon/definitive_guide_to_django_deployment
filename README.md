@@ -370,18 +370,18 @@ they'll be accessible to our Chef solo recipe.
 
 Start by loading the values we need into our settings.json file. 
 
-    echo "{
-    'id': 'config_1',
-    'POSTGRES_PASS': '<YOUR DB PASSWORD>',
-    'DEBUG': 'False',
-    'DOMAIN': '<YOUR DOMAIN NAME>',
-    'APP_NAME': '<YOUR APP NAME>',
-    'DATABASE_NAME': '<YOUR DATABASE NAME>',
-    'REPO': '<YOUR GITHUB REPO NAME>',
-    'GITHUB_USER': '<YOUR GITHUB USERNAME>',
-    'DATABASE_IP': '`cat fab_hosts/database.txt`',
-    'EC2_DNS': '`cat fab_hosts/webserver.txt`'
-    }" > settings.json
+    echo '{
+    "id": "config_1",
+    "POSTGRES_PASS": "<YOUR DB PASSWORD>",
+    "DEBUG": "False",
+    "DOMAIN": "<YOUR DOMAIN NAME>",
+    "APP_NAME": "<YOUR APP NAME>",
+    "DATABASE_NAME": "<YOUR DATABASE NAME>",
+    "REPO": "<YOUR GITHUB REPO NAME>",
+    "GITHUB_USER": "<YOUR GITHUB USERNAME>",
+    "DATABASE_IP": "`cat fab_hosts/database.txt`",
+    "EC2_DNS": "`cat fab_hosts/webserver.txt`"
+    }' > settings.json
     
 Now we need an encryption key (which we will *NOT* store in Github):
 
