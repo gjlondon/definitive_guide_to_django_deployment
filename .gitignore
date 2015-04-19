@@ -1,15 +1,10 @@
 *.pyc
 .DS_Store
-deploy/.vagrant
-.vagrant
 *.pid
-django_deployment_env/*
 *\#
 *~
 *#
 *.sublime-project
-aws.cfg
-fab_hosts/*
 *.sublime-workspace
 chef_files/dep_cookbooks/*
 chef_files/cookbooks/*
@@ -18,8 +13,11 @@ chef_files/data_bag_key
 chef_files/data_bags/*
 venv
 hold_chef_files/*
-settings.json
 *.lock
 .#*
 *_old
 */*/local_settings.pychef_files/data_bag_key
+
+# Ignore files generated during deployment. They are transient to your
+# environment and shouldn't be tracked in the VCS.
+deploy/
