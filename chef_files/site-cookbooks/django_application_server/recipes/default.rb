@@ -48,6 +48,12 @@ settings.to_hash.each do |key, value|
 	settings_string << "os.environ['#{key}'] = '#{value}'\n"
 end
 
+# Create some directories we'll need later
+directory "/srv/#{node.app_name}/shared" do
+    recursive true
+    action :create
+end
+
 # Update ubuntu and install necesary packages
 
 execute "Update apt repos" do
