@@ -343,7 +343,8 @@ can even be encrypted so they can be stored in a [VCS](#gloss_vcs). Knife solo l
 it. Fabric will automatically upload our databags to the server where
 they'll be accessible to our Chef solo recipe.
 
-Start by loading the values we need into our settings.json file.
+Start by loading the values we need into our settings.json file. **Be sure to
+update settings anytime you create new servers.**
 
 `APP_NAME` should be the name of the project in your repo, as it would appear
 in a Python import path.
