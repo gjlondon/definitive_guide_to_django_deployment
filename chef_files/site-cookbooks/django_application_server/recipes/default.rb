@@ -113,8 +113,6 @@ application "#{node.app_name}" do
 	group "nogroup"
 	repository "https://github.com/#{node.repo}.git"
 	revision "master"
-	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
-	symlinks("local_settings.py"=>"#{node.app_name}/settings/local_settings.py")
 	migrate true
 
 	django do
