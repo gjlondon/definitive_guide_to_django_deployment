@@ -1,8 +1,9 @@
 #Idiomatic Django Deployment - The Definitely Definitive Guide
+###By [George London](https://twitter.com/rogueleaderr) and [Adam Burns](http://yourteamneedsadam.com/)
 
-Wow, this guide is long. Why not skip it? [I'm available to freelance](mailto:george.j.london@gmail.com?subject=Help me deploy Django&body=Gee, I'm already writing this email. I guess I might as well hire you.).
+Wow, this guide is long. Why not skip it? [George is available to freelance](mailto:george.j.london@gmail.com?subject=Help me deploy Django&body=Gee, I'm already writing this email. I guess I might as well hire you.).
 
-Or, if you're kind of excited by how long this guide is, consider [following me on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to my newsletter](http://eepurl.com/GeOqP).
+Or, if you're kind of excited by how long this guide is, consider [following George on Twitter](http://www.twitter.com/rogueleaderr) or [subscribing to his newsletter](http://eepurl.com/GeOqP).
 
 # Overview
 
@@ -20,30 +21,30 @@ You'll go through the following steps:
 
 ###Why This Guide Is Needed
 
-Over the last two years, I've taught myself to program in order to
-build my startup [LinerNotes.com](http://www.linernotes.com). I
-started out expecting that the hardest part would be getting my head
-around the sophisticated algorithmic logic of programming. To my
-surprise, I've actually had to do very little difficult algorithmic work.[[1]](#note_algo) Instead, the hardest part has been getting proficient at using the
+A few years ago, George taught himself to program in order to
+build his first startup, [LinerNotes](http://www.linernotes.com). He
+started out expecting that the hardest part would be getting his head
+around the sophisticated algorithmic logic of programming. To his
+surprise, he's actually had to do very little difficult algorithmic work.[[1]](#note_algo) Instead, the hardest part was getting proficient at using the
 *many* different tools in the programmer's utility belt. From emacs to
 gunicorn, building a real project requires dozens of different
 tools. Theoretically, one can *a priori* reason through a red-black
 tree but there's just no way to learn emacs without the reading the
 manual. LinerNotes is actually a lot more complicated under the hood
-than it looks on the surface and so I've had to read quite a lot of
+than it looks on the surface and so he had to read quite a lot of
 manuals.
 
 The point of this guide is to save you some of that trouble. Sometimes
 trouble is good -- struggling to design and implement an API builds
 programming acumen. But struggling to configure nginx is just a waste
-of time. I've found many partial guides to Django deployment but
+of time. We've found many partial guides to Django deployment but
 haven't found any single, recently updated resource that lays out the
 **simple, Pythonic way of deploying a Django site in
 production**. This post will walk you through creating such a set
 up. But it *won't* introduce you to basic DevOps 101 concepts. See the bottom for a glossary of acronyms and explanatory footnotes (because Github breaks my intra-page links).[[2]](#note_devops)
 
-**Disclaimer**: I'm **definitely** not the most qualified person to write this post. I'm just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**. 
-Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and I'll update this guide as approriate.
+**Disclaimer**: We're **definitely** not the most qualified people to write this post. We're just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**.
+Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and we'll update this guide as appropriate.
 
 ###Overview of the Final Architecture
 
@@ -74,12 +75,8 @@ actually does.
 
 Since this guide is trying to get you to an actual publicly accessible site,
 we're going to go ahead and build our site on the smallest, freest Amazon [EC2](#gloss_ec2) instance available, the trusty "micro". If you don't want to use
-EC2, you can set up a local virtual machine on your laptop using 
-[Vagrant](http://www.vagrantup.com/) or use your own existing server (you'll have to tweak my scripts a little). I'm also intrigued by the
-[Docker project](https://www.docker.io/) -- it claims to allow deployment of
-whole application components in platform agnostic "containers." But Docker
-itself says it's not stable enough for production; who am I to
-disagree?[[5]](#note_docker)
+EC2, you can set up a local virtual machine on your laptop using
+[Vagrant](http://www.vagrantup.com/) or use your own existing server (you'll have to tweak my scripts a little). The [Docker project](https://www.docker.io/) has been picking up steam lately but at this point we believe that running Django inside of Docker on EC2 (i.e. running a virtual machine inside a virtual machine) is an unnecessary complication. But don't be Docker-sad! We *will* be using Docker to run our deployment tools in an isolated, virtual container on our laptops.
 
 Anyway, we're going to use EC2 to set up the smallest possible host for our webserver and another
 one for our database.
@@ -102,10 +99,6 @@ The github repo includes a fabfile.py[[7]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
 to read, so try to follow along with what each command is doing.
 
-To run the deployment we'll follow the community standard of running our
-deployment tools in an isolated, virtual container. We use
-[docker](https://www.docker.com). Follow one of the community guides for
-installing docker and its pre-requisites on your platform.
 
 First, we need to define [AWS](#gloss_aws) settings. In keeping
 with the principles of the [Twelve Factor App](http://12factor.net/)
@@ -129,10 +122,20 @@ These settings will be exported as enviornment variables in the docker
 container where both fabric and the AWS CLI will read them. We recommend using
 an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 12.04 LTS image.
 
-**We're also going to create a settings file that contains all the configuration for our actual app.** 
+**We're also going to create a settings file that contains all the configuration for our actual app.**
 
     echo '{}' > deploy/settings.json
     chmod 600 deploy/settings.json
+
+**Now it's time for Docker**. Follow one of the [guides for installing Docker](https://docs.docker.com/installation/#installation) and its pre-requisites on your development machine.
+
+Docker runs a "container", i.e. a lightweight virtual machine running (in this case) Ubuntu in an isolated environment on your development machine. So we can safely install all the tools we need for this guide inside the container without needing to worry about gumming up your development machine (or other things on your machine causing incompatibilities with these tools.)
+
+If you're on OSX then as of this writing the two ways to start a Docker container are using Boot2Docker or Kitematic. For either of those, you'll need to open the app inside your Applications folder. This will start (or give you the opportunity to start) the VM that Docker uses to create its container VM's. It may also push you into a new terminal, so be sure to
+
+    cd <YOUR GUIDE DIRECTORY>
+
+...if you're not already there.
 
 Now we can build and run the container for our deploy tools:
 
@@ -140,9 +143,11 @@ Now we can build and run the container for our deploy tools:
     docker run --env-file=deploy/environment -tiv $(pwd):/project/django_deployment django_deployment /bin/bash
 
 And now you're at a bash shell in a container with all the tools installed. The
-project's root directory has been mounted inside the container so untracked
+project's root directory has been mounted inside the container so un-tracked
 files like settings will be stored on your workstation but will still be
 available to `fab` and other tools.
+
+If Docker is giving you errors about being unable to connect and you're on OSX, make sure that you're running these commands in a terminal tab that was opened *by* Boot2Docker or Kitematic.
 
 **Warning:** If you are running boot2docker on OS X you may need to restart
 the boot2docker daemon on your host when you move to new networks (e.g. from
@@ -237,7 +242,7 @@ This guide assumes a standard Django 1.5 project layout with a few small tweaks:
         from django.core.wsgi import get_wsgi_application
         from dj_static import Cling
 
-        application = Cling(get_wsgi_application())    
+        application = Cling(get_wsgi_application())
 
 * Your installed apps must contain your project app and also `djcelery`.
 
@@ -248,7 +253,7 @@ semi-independently:
 
 **Gunicorn**: Our WSGI webserver. Gunicorn receives HTTP requests fowarded to it from nginx, executes
   our Django code to produce a response, and returns the response which nginx transmits back to the client.
-  
+
 **Nginx**: Our
   load balancer (a.k.a. "[reverse proxy server](http://en.wikipedia.org/wiki/Reverse_proxy)"). Nginx takes requests from the open internet and decides
   whether they should be passed to Gunicorn, served a static file,
@@ -271,7 +276,7 @@ semi-independently:
 **Postgres**: The main database server ("cluster" in Postgres
   parlance). Contains one or more "logical" databases containing our
   application data / model data.
-  
+
 ###Install the services
 
 We could install and configure each service individually, but instead
@@ -364,7 +369,7 @@ in a Python import path.
     | sed -e s/DB_IP_SLUG/`cat deploy/fab_hosts/database.txt`/ \
     | sed -e s/WEB_IP_SLUG/`cat deploy/fab_hosts/webserver.txt`/ \
     > deploy/settings.json
-    
+
 Now we need an encryption key (which we will *NOT* store in Github):
 
     cd chef_files
@@ -430,34 +435,34 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
 5. Deploy our Django app, which consists of:
 
    * Create a folder called `/srv/<APP_NAME>` that will hold our whole deployment
-   
+
    * Create a folder called `/srv/<APP_NAME>/shared` with will hold our virtualenv and some key configuration files
-   
+
    * Download our latest copy of our Github repo to `/srv/<APP_NAME>/shared/cached-copy`
-   
+
    * Create a `local_settings.py` file from a template and include information to connect to the database we created above (details loaded from our data bag.)
-   
+
    * "Migrate" (i.e. sync) the database with `manage.py syncdb`. The sync command can be overwritten if you want to use [South](http://south.aeracode.org/).
-   
+
    * Install all our Python packages with pip from `requirements/requirements.txt`.
-   
+
    * Run `manage.py collectstatic` to copy our static files (css, js, images) into a single static folder
-   
+
    * Install gunicorn and create a configuration file from a template. The config file lives at `/srv/<APP_NAME>/shared/gunicorn_config.py`.
-   
+
    * Bind gunicorn to talk over a unix socket named after our app
-   
+
    * Install celery, along with celery's built-in helpers celerycam and celerybeat. Create a configuration file from a template. The config lives at `/srv/<APP_NAME>/shared/celery_settings.py`.
-   
+
    * Create "supervisor" stubs that tell supervisor to manage our gunicorn and celery processes.
 
    * Copy the 'cached-copy' into a `/srv/<APP_NAME>/releases/<SHA1_HASH_of_release>` folder'. Then symlink the latest release into `/srv/<APP_NAME>/current` which is where where the live app ultimately lives.
-   
+
 
 6. Create a "project.settings" file that contains the sensitive variables (e.g. database password) for our Django app.
 
 **Hopefully this list makes it a bit more clear why we're using Chef**. You certainly *could* do each of these steps by hand but it would be much more time consuming and error-prone.
-    
+
 
 
 
@@ -598,13 +603,13 @@ There are a bunch of open and closed source solutions. They're all a bit more co
 
 [Datadog](http://www.datadoghq.com/) makes pretty metric dashboards. It will automatically monitor server CPU/memory/etc status. Datadog can send an
 alert if there's no CPU activity from the webserver or the database (probably meaning the
-EC2 servers are down.) And it can also hook into a custom statsd library and lets you emit/graph whatever metrics you want from anywhere in your app. You just have to decorate your code by hand. 
+EC2 servers are down.) And it can also hook into a custom statsd library and lets you emit/graph whatever metrics you want from anywhere in your app. You just have to decorate your code by hand.
 
 
 ####Notifications / PagerDuty
 
 [PagerDuty](http://www.pagerduty.com/) is a website that will call or email you if something goes wrong with a
- server. I've configured it to email/SMS if anything goes wrong with my site. 
+ server. I've configured it to email/SMS if anything goes wrong with my site.
 
 Django by default automatically emits error emails, which I:
 

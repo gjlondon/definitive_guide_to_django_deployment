@@ -21,3 +21,4 @@ hold_chef_files/*
 # Ignore files generated during deployment. They are transient to your
 # environment and shouldn't be tracked in the VCS.
 deploy/
+nodes/

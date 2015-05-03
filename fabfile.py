@@ -26,7 +26,10 @@ deploy_settings = {
     'aws_ssh_port': None,
 }
 for name, value in deploy_settings.items():
-    env[name] = os.getenv(name.upper(), value)
+    env_value = os.getenv(name.upper())
+    env[name] = env_value
+    if not env_value:
+        raise Exception("Please make sure to enter your AWS keys/info in your deploy/environment file before running fab scripts. {} is current set to {}".format(name, value))
 
 # Define non-configurable settings.
 env.root_directory = os.path.dirname(os.path.realpath(__file__))
@@ -37,7 +40,6 @@ env.aws_ssh_key_extension = '.pem'
 env.aws_ssh_key_path = os.path.join(
     env.ssh_directory,
     ''.join([env.aws_ssh_key_name, env.aws_ssh_key_extension]))
-
 
 #-----FABRIC TASKS-----------
 
@@ -268,10 +270,13 @@ def connect_to_ec2():
     """
     return a connection given credentials imported from config
     """
-    return boto.ec2.connect_to_region(
+    ec2_connection = boto.ec2.connect_to_region(
         env.aws_default_region,
         aws_access_key_id=env.aws_access_key_id,
         aws_secret_access_key=env.aws_secret_access_key)
+    if not ec2_connection:
+        raise Exception("We're having a problem connecting to your AWS account. Are you sure you entered your credentials correctly?")
+    return ec2_connection
 
 
 def install_chef():
