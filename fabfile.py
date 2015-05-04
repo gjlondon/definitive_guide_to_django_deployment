@@ -1,27 +1,51 @@
+import errno
 import os, json
 from tempfile import mkdtemp
 from contextlib import contextmanager
 
-from fabric.operations import put
+from fabric.operations import open_shell, put
 from fabric.api import env, local, sudo, run, cd, prefix, task, settings, execute
 from fabric.colors import green as _green, yellow as _yellow
 from fabric.context_managers import hide, show, lcd
 import boto
 import boto.ec2
-from config import Config
 import time
 
-# import configuration variables from untracked config file
-aws_cfg = Config(open("aws.cfg"))
-app_settings = json.load(open("settings.json"))
-env.key_filename = os.path.expanduser(os.path.join(aws_cfg["key_dir"],
-                                                   aws_cfg["key_name"] + ".pem"))
+# -----SETTINGS-----------
+
+
+# Read in configurable settings.
+deploy_settings = {
+    'aws_access_key_id': None,
+    'aws_secret_access_key': None,
+    'aws_default_region': None,
+    'aws_security_group_name': None,
+    'aws_instance_type': None,
+    'aws_ami_id': None,
+    'aws_ssh_key_name': None,
+    'aws_ssh_port': None,
+}
+for name, value in deploy_settings.items():
+    env[name] = os.getenv(name.upper(), value)
+
+# Define non-configurable settings.
+env.root_directory = os.path.dirname(os.path.realpath(__file__))
+env.deploy_directory = os.path.join(env.root_directory, 'deploy')
+env.app_settings_file = os.path.join(env.deploy_directory, 'settings.json')
+env.ssh_directory = os.path.join(env.deploy_directory, 'ssh')
+env.aws_ssh_key_extension = '.pem'
+env.aws_ssh_key_path = os.path.join(
+    env.ssh_directory,
+    ''.join([env.aws_ssh_key_name, env.aws_ssh_key_extension]))
 
 
 #-----FABRIC TASKS-----------
 
+
 @task
 def setup_aws_account():
+
+    prep_paths(env.ssh_directory, env.deploy_directory)
 
     ec2 = connect_to_ec2()
 
@@ -29,28 +53,20 @@ def setup_aws_account():
     # If we get an InvalidKeyPair.NotFound error back from EC2,
     # it means that it doesn't exist and we need to create it.
     try:
-        key_name = aws_cfg["key_name"]
+        key_name = env.aws_ssh_key_name
         key = ec2.get_all_key_pairs(keynames=[key_name])[0]
         print "key name {} already exists".format(key_name)
     except ec2.ResponseError, e:
         if e.code == 'InvalidKeyPair.NotFound':
-            print 'Creating keypair: %s' % aws_cfg["key_name"]
+            print 'Creating keypair: %s' % env.aws_ssh_key_name
             # Create an SSH key to use when logging into instances.
-            key = ec2.create_key_pair(aws_cfg["key_name"])
-
-            # Make sure the specified key_dir actually exists.
-            # If not, create it.
-            key_dir = aws_cfg["key_dir"]
-            key_dir = os.path.expanduser(key_dir)
-            key_dir = os.path.expandvars(key_dir)
-            if not os.path.isdir(key_dir):
-                os.mkdir(key_dir, 0700)
+            key = ec2.create_key_pair(env.aws_ssh_key_name)
 
             # AWS will store the public key but the private key is
             # generated and returned and needs to be stored locally.
             # The save method will also chmod the file to protect
             # your private key.
-            key.save(key_dir)
+            key.save(directory_path=env.ssh_directory)
         else:
             raise
 
@@ -58,24 +74,24 @@ def setup_aws_account():
     # If we get an InvalidGroup.NotFound error back from EC2,
     # it means that it doesn't exist and we need to create it.
     try:
-        group = ec2.get_all_security_groups(groupnames=[aws_cfg["group_name"]])[0]
+        group = ec2.get_all_security_groups(groupnames=[env.aws_security_group_name])[0]  # noqa
     except ec2.ResponseError, e:
         if e.code == 'InvalidGroup.NotFound':
-            print 'Creating Security Group: %s' % aws_cfg["group_name"]
+            print 'Creating Security Group: %s' % env.aws_security_group_name
             # Create a security group to control access to instance via SSH.
-            group = ec2.create_security_group(aws_cfg["group_name"],
+            group = ec2.create_security_group(env.aws_security_group_name,
                                               'A group that allows SSH access')
         else:
             raise
 
     # Add a rule to the security group to authorize SSH traffic
     # on the specified port.
-    for port in ["80", aws_cfg["ssh_port"]]:
+    for port in ["80", env.aws_ssh_port]:
         try:
             group.authorize('tcp', port, port, "0.0.0.0/0")
         except ec2.ResponseError, e:
             if e.code == 'InvalidPermission.Duplicate':
-                print 'Security Group: %s already authorized' % aws_cfg["group_name"]
+                print 'Security Group: %s already authorized' % env.aws_security_group_name  # noqa
             else:
                 raise
 
@@ -84,65 +100,23 @@ def setup_aws_account():
         group.authorize('tcp', 5432, 5432, src_group=group)
     except ec2.ResponseError, e:
         if e.code == 'InvalidPermission.Duplicate':
-            print 'Security Group: %s already authorized' % aws_cfg["group_name"]
+            print 'Security Group: %s already authorized' % env.aws_security_group_name  # noqa
         else:
             raise
 
+
 @task
-def create_instance(name, ami=aws_cfg["ubuntu_lts_ami"],
-                    instance_type=aws_cfg["instance_type"],
-                    key_name=aws_cfg["key_name"],
-                    key_extension='.pem',
-                    key_dir='~/.ec2',
-                    group_name=aws_cfg["group_name"],
-                    ssh_port=22,
-                    cidr='0.0.0.0/0',
-                    tag=None,
-                    user_data=None,
-                    cmd_shell=True,
-                    login_user='ubuntu',
-                    ssh_passwd=None):
+def create_instance(name, tag=None):
     """
     Launch an instance and wait for it to start running.
     Returns a tuple consisting of the Instance object and the CmdShell
     object, if request, or None.
 
-    ami        The ID of the Amazon Machine Image that this instance will
-               be based on.  Default is a 64-bit Amazon Linux EBS image.
-
-    instance_type The type of the instance.
-
-    key_name   The name of the SSH Key used for logging into the instance.
-               It will be created if it does not exist.
-
-    key_extension The file extension for SSH private key files.
-
-    key_dir    The path to the directory containing SSH private keys.
-               This is usually ~/.ssh.
-
-    group_name The name of the security group used to control access
-               to the instance.  It will be created if it does not exist.
-
-    ssh_port   The port number you want to use for SSH access (default 22).
-
-    cidr       The CIDR block used to limit access to your instance.
-
     tag        A name that will be used to tag the instance so we can
                easily find it later.
-
-    user_data  Data that will be passed to the newly started
-               instance at launch and will be accessible via
-               the metadata service running at http://169.254.169.254.
-
-    cmd_shell  If true, a boto CmdShell object will be created and returned.
-               This allows programmatic SSH access to the new instance.
-
-    login_user The user name used when SSH'ing into new instance.  The
-               default is 'ec2-user'
-
-    ssh_passwd The password for your SSH key if it is encrypted with a
-               passphrase.
     """
+
+    prep_paths(env.ssh_directory, env.deploy_directory)
 
     print(_green("Started creating {}...".format(name)))
     print(_yellow("...Creating EC2 instance..."))
@@ -150,15 +124,16 @@ def create_instance(name, ami=aws_cfg["ubuntu_lts_ami"],
     conn = connect_to_ec2()
 
     try:
-        key = conn.get_all_key_pairs(keynames=[key_name])[0]
-        group = conn.get_all_security_groups(groupnames=[group_name])[0]
+        key = conn.get_all_key_pairs(keynames=[env.aws_ssh_key_name])[0]
+        group = conn.get_all_security_groups(groupnames=[env.aws_security_group_name])[0]  # noqa
     except conn.ResponseError, e:
         setup_aws_account()
 
-    reservation = conn.run_instances(ami,
-        key_name=key_name,
-        security_groups=[group_name],
-        instance_type=instance_type)
+    reservation = conn.run_instances(
+        env.aws_ami_id,
+        key_name=env.aws_ssh_key_name,
+        security_groups=[env.aws_security_group_name],
+        instance_type=env.aws_instance_type)
 
     instance = reservation.instances[0]
     conn.create_tags([instance.id], {"Name":name})
@@ -172,22 +147,16 @@ def create_instance(name, ami=aws_cfg["ubuntu_lts_ami"],
     print(_green("Instance state: %s" % instance.state))
     print(_green("Public dns: %s" % instance.public_dns_name))
 
-    if raw_input("Add to ssh/config? (y/n) ").lower() == "y":
-        ssh_slug = """
-        Host {name}
-        HostName {dns}
-        Port 22
-        User ubuntu
-        IdentityFile {key_file_path}
-        ForwardAgent yes
-        """.format(name=name, dns=instance.public_dns_name, key_file_path=os.path.join(os.path.expanduser(key_dir),
-            key_name + key_extension))
+    host_data = {
+        'host_string': instance.public_dns_name,
+        'port': '22',
+        'user': 'ubuntu',
+        'key_filename': env.aws_ssh_key_path,
+    }
+    with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'w') as f:  # noqa
+        json.dump(host_data, f)
 
-        ssh_config = open(os.path.expanduser("~/.ssh/config"), "a")
-        ssh_config.write("\n{}\n".format(ssh_slug))
-        ssh_config.close()
-
-    f = open("fab_hosts/{}.txt".format(name), "w")
+    f = open("deploy/fab_hosts/{}.txt".format(name), "w")
     f.write(instance.public_dns_name)
     f.close()
     return instance.public_dns_name
@@ -214,8 +183,17 @@ def terminate_instance(name):
             if raw_input("terminate? (y/n) ").lower() == "y":
                 print(_yellow("Terminating {}".format(instance.id)))
                 conn.terminate_instances(instance_ids=[instance.id])
+                os.remove(os.path.join(env.ssh_directory, ''.join([name, '.json'])))  # noqa
                 print(_yellow("Terminated"))
 
+
+@task
+def ssh(name):
+    """SSH into an instance."""
+    with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
+        host_data = json.load(f)
+    with settings(**host_data):
+        open_shell()
 
 
 @task
@@ -230,7 +208,7 @@ def bootstrap(name, no_install=False):
     """
 
     print(_green("--BOOTSTRAPPING {}--".format(name)))
-    f = open("fab_hosts/{}.txt".format(name))
+    f = open("deploy/fab_hosts/{}.txt".format(name))
     env.host_string = "ubuntu@{}".format(f.readline().strip())
     if not no_install:
         install_chef()
@@ -249,7 +227,7 @@ def deploy(name):
     """
 
     print(_green("--DEPLOYING {}--".format(name)))
-    f = open("fab_hosts/{}.txt".format(name))
+    f = open("deploy/fab_hosts/{}.txt".format(name))
     env.host_string = "ubuntu@{}".format(f.readline().strip())
     deploy_app(name)
 
@@ -260,11 +238,25 @@ def restart():
     Reload nginx/gunicorn
     """
     with settings(warn_only=True):
+        with open(env.app_settings_file) as f:
+            app_settings = json.load(f)
         sudo("supervisorctl restart {app_name}".format(app_name=app_settings["APP_NAME"]))
         sudo('/etc/init.d/nginx reload')
 
 
 #----------HELPER FUNCTIONS-----------
+
+def prep_paths(ssh_directory, deploy_directory):
+    try:
+        os.makedirs(ssh_directory)
+    except OSError as exception:
+        if exception.errno == errno.EEXIST and os.path.isdir(ssh_directory):
+            pass
+        else:
+            raise
+    os.chmod(deploy_directory, 0700)
+    os.chmod(ssh_directory, 0700)
+
 
 @contextmanager
 def _virtualenv():
@@ -276,9 +268,10 @@ def connect_to_ec2():
     """
     return a connection given credentials imported from config
     """
-    return boto.ec2.connect_to_region(aws_cfg["region"],
-    aws_access_key_id=aws_cfg["aws_access_key_id"],
-    aws_secret_access_key=aws_cfg["aws_secret_access_key"])
+    return boto.ec2.connect_to_region(
+        env.aws_default_region,
+        aws_access_key_id=env.aws_access_key_id,
+        aws_secret_access_key=env.aws_secret_access_key)
 
 
 def install_chef():
@@ -286,8 +279,9 @@ def install_chef():
     Install chef-solo on the server.
     """
     print(_yellow("--INSTALLING CHEF--"))
-    local("knife solo prepare -i {key_file} {host}".format(key_file=env.key_filename,
-                                                           host=env.host_string))
+    local("knife solo prepare -i {key_file} {host}".format(
+        key_file=env.aws_ssh_key_path,
+        host=env.host_string))
 
 
 def run_chef(name):
@@ -301,9 +295,10 @@ def run_chef(name):
     print(_yellow("--RUNNING CHEF--"))
     node = "./nodes/{name}_node.json".format(name=name)
     with lcd('chef_files'):
-        local("knife solo cook -i {key_file} {host} {node}".format(key_file=env.key_filename,
-                                                           host=env.host_string,
-                                                           node=node))
+        local("knife solo cook -i {key_file} {host} {node}".format(
+            key_file=env.aws_ssh_key_path,
+            host=env.host_string,
+            node=node))
 
 
 def deploy_app(name):
@@ -315,9 +310,10 @@ def deploy_app(name):
         try:
             # skip updating the Berkshelf cookbooks to save time
             os.rename("chef_files/Berksfile", "chef_files/hold_Berksfile")
-            local("knife solo cook -i {key_file} {host} {node}".format(key_file=env.key_filename,
-                                                           host=env.host_string,
-                                                           node=node))
+            local("knife solo cook -i {key_file} {host} {node}".format(
+                key_file=env.aws_ssh_key_path,
+                host=env.host_string,
+                node=node))
             restart()
         except Exception as e:
             print e

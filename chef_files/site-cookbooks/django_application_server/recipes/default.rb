@@ -48,6 +48,12 @@ settings.to_hash.each do |key, value|
 	settings_string << "os.environ['#{key}'] = '#{value}'\n"
 end
 
+# Create some directories we'll need later
+directory "/srv/#{node.app_name}/shared" do
+    recursive true
+    action :create
+end
+
 # Update ubuntu and install necesary packages
 
 execute "Update apt repos" do
@@ -107,8 +113,6 @@ application "#{node.app_name}" do
 	group "nogroup"
 	repository "https://github.com/#{node.repo}.git"
 	revision "master"
-	symlink_before_migrate "local_settings.py"=>"#{node.app_name}/settings/local_settings.py"
-	symlinks("local_settings.py"=>"#{node.app_name}/settings/local_settings.py")
 	migrate true
 
 	django do

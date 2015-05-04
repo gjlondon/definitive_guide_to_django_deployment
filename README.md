@@ -98,66 +98,55 @@ Start off by cloning the Github repo for this project onto your local machine.
     git clone git@github.com:rogueleaderr/definitive_guide_to_django_deployment.git
     cd definitive_guide_to_django_deployment
 
-I'm assuming that if you want to deploy Django, you already have
-Python and pip and [virtualenv](http://www.virtualenv.org/en/latest/)
-on your laptop. But just to check:
-
-    python --version
-    pip --version
-    virtualenv --version
-
-This process requires a number of Python dependencies which we'll
-install into a virtualenv (but won't track with git):[[6]](#note_2)
-
-    virtualenv django_deployment_env
-    source django_deployment_env/bin/activate
-    # install all our neccesary dependencies from a requirements file
-    pip install -r requirements.txt
-
-    # or, for educational purposes, individually
-    pip install boto
-    pip install fabric
-    pip install awscli
-
 The github repo includes a fabfile.py[[7]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
 to read, so try to follow along with what each command is doing.
 
-First, we need to set up [AWS](#gloss_aws) credentials for boto to use. In keeping
+To run the deployment we'll follow the community standard of running our
+deployment tools in an isolated, virtual container. We use
+[docker](https://www.docker.com). Follow one of the community guides for
+installing docker and its pre-requisites on your platform.
+
+First, we need to define [AWS](#gloss_aws) settings. In keeping
 with the principles of the [Twelve Factor App](http://12factor.net/)
-we store configuration either in environment variables or in config
-files which are not tracked by VCS. You can you AWS access and secret keys on your [AWS security page](https://portal.aws.amazon.com/gp/aws/securityCredentials).
+we store configuration either in environment variables or in config files which
+are not tracked by VCS. You can you AWS access and secret keys on your
+[AWS security page](https://portal.aws.amazon.com/gp/aws/securityCredentials).
 
     echo '
-    aws_access_key_id: <YOUR KEY HERE>
-    aws_secret_access_key: <YOUR SECRET KEY HERE>
-    region: "<YOUR REGION HERE, e.g. us-east-1>"
-    key_name: <YOUR EC2 KEY NAME>
-    key_dir: "~/.ec2"
-    group_name: <YOUR SECURITY GROUP NAME>
-    ssh_port: 22
-    instance_type: "t1.micro
-    ubuntu_lts_ami: "ami-d0f89fb9"' > aws.cfg
-    echo "aws.cfg" >> .gitignore
+    AWS_ACCESS_KEY_ID=<YOUR KEY HERE>
+    AWS_SECRET_ACCESS_KEY=<YOUR SECRET KEY HERE>
+    AWS_DEFAULT_REGION=<YOUR REGION HERE, e.g. us-east-1>
+    AWS_SECURITY_GROUP_NAME=<YOUR SECURITY GROUP NAME>
+    AWS_INSTANCE_TYPE=t1.micro
+    AWS_AMI_ID=<SEE http://cloud-images.ubuntu.com/locator/ec2/>
+    AWS_SSH_KEY_NAME=<YOUR EC2 KEY NAME>
+    AWS_SSH_PORT=22' > deploy/environment
+    chmod 600 deploy/environment
 
 
-We're using an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu image.
-
-While we're at it, let's create a config file that will let you use
-the AWS [CLI](#gloss_cli) directly:
-
-    mkdir ~/.aws
-    echo '
-    aws_access_key_id = <YOUR KEY HERE>
-    aws_secret_access_key = <YOUR SECRET KEY HERE>
-    region = <YOUR REGION HERE, e.g. us-east-1>' > ~/.aws/config
+These settings will be exported as enviornment variables in the docker
+container where both fabric and the AWS CLI will read them. We recommend using
+an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 12.04 LTS image.
 
 **We're also going to create a settings file that contains all the configuration for our actual app.** 
 
-    touch settings.json
-    echo "settings.json" >> .gitignore
+    echo '{}' > deploy/settings.json
+    chmod 600 deploy/settings.json
 
-**Do not track the settings.json file in git.**
+Now we can build and run the container for our deploy tools:
+
+    docker build -t django_deployment .
+    docker run --env-file=deploy/environment -tiv $(pwd):/project/django_deployment django_deployment /bin/bash
+
+And now you're at a bash shell in a container with all the tools installed. The
+project's root directory has been mounted inside the container so untracked
+files like settings will be stored on your workstation but will still be
+available to `fab` and other tools.
+
+**Warning:** If you are running boot2docker on OS X you may need to restart
+the boot2docker daemon on your host when you move to new networks (e.g. from
+home to a coffee shop).
 
 Now we're going to use a Fabric directive to setup our AWS account [[6]](#cred_2) by:
 
@@ -187,17 +176,17 @@ These commands tell Fabric to use boto to create a new "micro"
 provide. You can also provide a lot more configuration options to this
 directive at the command line but the defaults are sensible for now.
 
-You'll also be given the option to add the instance information to
-your ~/.ssh/config file so that you can login to your instance
-directly with
+It may be a few minutes before new instances are fully started. EC2 reports
+them online when the virtual hardware is up, but Linux takes some time to boot
+after that.
 
-    ssh webserver
+Now you can ssh into a server:
+
+    fab ssh:webserver
 
 If you create an instance by mistake, you can terminate it with
 
-    fab terminate_instance webserver
-
-(You'll have to manually delete the ssh/config entry)
+    fab terminate_instance:webserver
 
 <a id="services"></a>
 #Install and Configure Your Services
@@ -330,27 +319,13 @@ of pre-packaged and (usually well maintained) cookbooks for common
 tools like git. And although Chef cookbooks can get quite complicated, they are just code and so they can be version controlled with git.
 
 
-####Set up Chef
-
-First, install Ruby:
-
-    #brew install rbenv (the virtualenv equivalent)
-    echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zshrc # or .bashrc
-    echo 'eval "$(rbenv init -)"' >> ~/.zshrc # or .bashrc
-    rbenv install 1.9.3-p448
-    rbenv global 1.9.3-p448
-    #install bundler, the pip equivalent
-    gem install bundler
-
-Install some tools that simplify working with Chef ([Knife Solo](https://github.com/matschaffer/knife-solo), [Knife Solo Data Bag](https://github.com/thbishop/knife-solo_data_bag), [Berkshelf](http://berkshelf.com/), and [Knife-solo\_data\_bag](https://github.com/thbishop/knife-solo_data_bag)):
-
-    # Install all the gems in the file "Gemfile"
-    bundler install
-    # Ruby requires rehashing to use new command line options
-    rbenv rehash
-
-
 ###Chef, [make me a server-which](http://xkcd.com/149/).
+
+We use some tools that simplify working with Chef:
+
+* [Knife Solo](https://github.com/matschaffer/knife-solo)
+* [Knife Solo Data Bag](https://github.com/thbishop/knife-solo_data_bag)
+* [Berkshelf](http://berkshelf.com/)
 
 We're going to have two nodes, a webserver and a database. We'll have four roles:
 
@@ -368,7 +343,11 @@ can even be encrypted so they can be stored in a [VCS](#gloss_vcs). Knife solo l
 it. Fabric will automatically upload our databags to the server where
 they'll be accessible to our Chef solo recipe.
 
-Start by loading the values we need into our settings.json file. 
+Start by loading the values we need into our settings.json file. **Be sure to
+update settings anytime you create new servers.**
+
+`APP_NAME` should be the name of the project in your repo, as it would appear
+in a Python import path.
 
     echo '{
     "id": "config_1",
@@ -382,9 +361,9 @@ Start by loading the values we need into our settings.json file.
     "DATABASE_IP": "DB_IP_SLUG",
     "EC2_DNS": "WEB_IP_SLUG"
     }' \
-    | sed -e s/DB_IP_SLUG/`cat fab_hosts/database.txt`/ \
-    | sed -e s/WEB_IP_SLUG/`cat fab_hosts/webserver.txt`/ \
-    > settings.json
+    | sed -e s/DB_IP_SLUG/`cat deploy/fab_hosts/database.txt`/ \
+    | sed -e s/WEB_IP_SLUG/`cat deploy/fab_hosts/webserver.txt`/ \
+    > deploy/settings.json
     
 Now we need an encryption key (which we will *NOT* store in Github):
 
@@ -398,7 +377,7 @@ Now we need an encryption key (which we will *NOT* store in Github):
 Now we can use the knife-solo to create an encrypted data bag from our settings.json file:
 
     cd chef_files
-    knife solo data bag create config config_1 --json-file ../settings.json
+    knife solo data bag create config config_1 --json-file ../deploy/settings.json
     cd ..
 
 Our `chef_files` repo contains a file `Berksfile` that lists all the cookbooks we are going to install on our server, along with specific versions. Knife solo will install all of these with a tool called [Berkshelf](http://berkshelf.com/), which I honestly assume is named after [this](http://i.qkme.me/3pjyup.jpg). If a cookbook becomes dated, just upgrade the version number in `chef_files/Berksfile`.
@@ -484,9 +463,9 @@ Then runs our main [application server setup recipe](https://github.com/roguelea
 
 ###Make it public.
 
-If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat fab_hosts/webserver.txt`). But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and **change your A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
+If Chef runs all the way through without error (as it should) you'll now have a 'Hello World' site accessible by opening your browser and visiting the "public DNS" of your site (which you can find from the EC2 management console or by doing `cat deploy/fab_hosts/webserver.txt`). But you probably don't want visitors to have to type in "103.32.blah-blah.ec2.blah-blah". You want them to just visit "myapp.com" and to do that you'll need to visit your domain registrar (e.g. GoDaddy or Netfirms) and **change your A-Record** to point to the IP of your webserver (which can also be gotten from the EC2 console or by doing):
 
-    ec2-describe-instances | fgrep `cat fab_hosts/webserver.txt` | cut -f17
+    ec2-describe-instances | fgrep `cat deploy/fab_hosts/webserver.txt` | cut -f17
 
 Domain registrars vary greatly on how to change the A-record so check your registrar's instructions.
 
