@@ -46,6 +46,8 @@ up. But it *won't* introduce you to basic DevOps 101 concepts. See the bottom fo
 **Disclaimer**: We're **definitely** not the most qualified people to write this post. We're just the only one dumb enough to try. If you object to anything in this post or get confused or find something broken, **help make it better**.
 Leave a helpful comment (or even better submit a pull request to the Github repo.) The full text of this post is available in the repo and we'll update this guide as appropriate.
 
+**Second disclaimer**If you're working on a small project, aren't doing anything unusual or custom with Django, and don't anticipate needing to handle a large volume of traffic or expanding the scope of your project then you should seriously consider using a PaaS (platform as a service) provider like [Heroku](https://www.heroku.com/) or [Gondor.io](https://gondor.io/). For a monthly fee, they handle all of the messy configuration (i.e. this guide) for you (as long as your app is structured according to their specifications.) They're not necessarily easier to get started with than this guide, but they do save you from a lot of down-the-road hassle of administering your own servers (e.g. doing security patches.)
+
 ###Overview of the Final Architecture
 
 Our example site is just a "hello world" app, but this is going to be the most well-implemented, stable, and scalable
@@ -122,6 +124,10 @@ These settings will be exported as enviornment variables in the docker
 container where both fabric and the AWS CLI will read them. We recommend using
 an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 12.04 LTS image.
 
+We also need to make sure that our ec2 "keypair" ssh keys is accessible to Docker, so do
+
+    cp -p <PATH TO YOUR EC2 KEY> deploy/ssh
+
 **We're also going to create a settings file that contains all the configuration for our actual app.**
 
     echo '{}' > deploy/settings.json
@@ -142,7 +148,9 @@ Now we can build and run the container for our deploy tools:
     docker build -t django_deployment .
     docker run --env-file=deploy/environment -tiv $(pwd):/project/django_deployment django_deployment /bin/bash
 
-And now you're at a bash shell in a container with all the tools installed. The
+This step may take a while to download everything, so why not watch a [PyCon video](http://pyvideo.org/category/65/pycon-us-2015) while you wait?
+
+Once the process finishes, you'll be at a bash shell in a container with all the tools installed. The
 project's root directory has been mounted inside the container so un-tracked
 files like settings will be stored on your workstation but will still be
 available to `fab` and other tools.
@@ -165,11 +173,11 @@ do
 
 ###Launch Some EC2 Servers
 
-We're going to launch two Ubuntu 12.04 LTS servers, one for our web host
+We're going to launch two Ubuntu 14.04 LTS servers, one for our web host
 and one for our database. We're using Ubuntu because it it seems to be
-the most popular linux distro right now, and 12.04 because it's a (L)ong (T)erm (S)upport
+the most popular linux distro right now, and 14.04 because it's a (L)ong (T)erm (S)upport
 version, meaning we have the longest period before it's official
-deprecated and we're forced to deal with an OS upgrade.
+deprecated and we're forced to deal with an OS upgrade. Depending on what [AMI you choose](http://cloud-images.ubuntu.com/locator/ec2/) in your settings, you may end up with a different version. (If in doubt, choose a i386 ebs-ssd LTS version.)
 
 With boto and Fabric, launching a new instance is very easy:
 
@@ -664,9 +672,6 @@ a hard time following along. But Google can help you with that. Don't worry, I'l
 separate box will avoid resource contention and make your app more scalable. You also can run nginx and celery on their own VM's which will make your site *super* scalable. But if you need this guide then you're probably not seeing enough traffic to make that worth the added complexity.
 
 [4]<a href id="cred_3"></a> [More about WSGI](http://agiliq.com/blog/2013/07/basics-wsgi/)
-
-[5]<a href id="note_docker"></a> But *you* should really consider writing a guide to deploying Django
-using Docker so I can link to it.
 
 [6]<a href id="note_2"></a> For development I enjoy [VirtualenvWrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) which makes switching between venv's easy. But it installs venvs by default in a ~/Envs home directory and for deployment we want to keep as much as possible inside of one main project directory (to make everything easy to find.)
 

@@ -22,3 +22,5 @@ hold_chef_files/*
 # environment and shouldn't be tracked in the VCS.
 deploy/
 nodes/
+chef_files/data_bag_key
+chef_files/data_bag_key

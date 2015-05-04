@@ -4,6 +4,7 @@ run_list(
   "recipe[users::sysadmins]",
   "recipe[sudo]",
   "recipe[apt]",
+  "recipe[locale]",
   "recipe[build-essential]"
 )
 override_attributes(
@@ -14,4 +15,3 @@ override_attributes(
     }
   }
 )
-
