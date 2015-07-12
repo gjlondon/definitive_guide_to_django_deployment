@@ -124,7 +124,7 @@ These settings will be exported as enviornment variables in the docker
 container where both fabric and the AWS CLI will read them. We recommend using
 an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 12.04 LTS image.
 
-We also need to make sure that our ec2 "keypair" ssh keys is accessible to Docker, so do
+If you already have an EC2 SSH key pair that you want to use, make sure you copy it to the deploy folder (otherwise skip this step and we'll create one for you automatically):
 
     cp -p <PATH TO YOUR EC2 KEY> deploy/ssh
 
@@ -204,7 +204,7 @@ If you create an instance by mistake, you can terminate it with
 <a id="services"></a>
 #Install and Configure Your Services
 
-We need a project to deploy. Your easiest option is to just clone the sample project I've created:
+We need a project to deploy. Your easiest option is to use the sample project I've created. The deployment will clone it onto webservers automatically, but you might want your own local clone so you can follow along:
 
     git clone git@github.com:rogueleaderr/django_deployment_example_project.git
 
@@ -367,10 +367,10 @@ in a Python import path.
     "POSTGRES_PASS": "<YOUR DB PASSWORD>",
     "DEBUG": "False",
     "DOMAIN": "<YOUR DOMAIN NAME>",
-    "APP_NAME": "<YOUR APP NAME>",
+    "APP_NAME": "<NAME OF PYTHON PACKAGE INSIDE YOUR REPO: e.g. deployment_example_project>",
     "DATABASE_NAME": "<YOUR DATABASE NAME>",
-    "REPO": "<YOUR GITHUB REPO NAME>",
-    "GITHUB_USER": "<YOUR GITHUB USERNAME>",
+    "REPO": "<YOUR GITHUB REPO NAME: e.g. django_deployment_example_project>",
+    "GITHUB_USER": "<YOUR GITHUB USERNAME: e.g. rogueleaderr>",
     "DATABASE_IP": "DB_IP_SLUG",
     "EC2_DNS": "WEB_IP_SLUG"
     }' \
@@ -496,6 +496,14 @@ Then back in the deployment guide folder, do:
 
 <a id="debug"></a>
 #Debugging:
+
+### Deploy
+
+1. If you edit `deploy/settings.json`, remember to regenerate the chef data bag.
+2. If you terminate and re-launch an instance, remember to update the `IP` and `DNS` fields in `deploy/settings.json`.
+3. The vars defined in `deploy/environment` are read when the docker container starts. If you edit them, exit and re-run the docker container so they're re-read.
+4. The cache in `chef_files/cookbooks` can get outdated. If you're seeing Chef errors, try deleting the contents of that directory and starting over.
+5. By default Chef will try to roll back failed launches, but that can make it hard to figure out why the launch failed. To disable rollback, add `rollback_on_error false` to `chef_files/site-cookbooks/django_application_server/recipes/default.rb` in the same place as its `repository` and `revision` options.
 
 ###Nginx
 
