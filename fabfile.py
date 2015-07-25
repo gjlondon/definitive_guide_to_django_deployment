@@ -192,8 +192,10 @@ def terminate_instance(name):
 @task
 def ssh(name):
     """SSH into an instance."""
-    with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
-        host_data = json.load(f)
+    #with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
+    #    host_data = json.load(f)
+    f = open("deploy/fab_hosts/{}.txt".format(name))
+    env.host_string = "ubuntu@{}".format(f.readline().strip())
     with settings(**host_data):
         open_shell()
 
@@ -377,6 +379,19 @@ def allocate_and_assign_ip(name):
             break
         break
     if ip:
-        f = open("deploy/fab_hosts/{}.txt".format(name), "w")
-        f.write(ip.public_ip)
-        f.close()
+        with open("deploy/fab_hosts/{}.txt".format(name), "w") as f:
+            f.write(ip.public_ip)
+        # update ssh address
+        with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
+            host_data = json.load(f)
+        host_data['host_string'] = ip.public_ip
+        with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'w') as f:  # noqa
+            json.dump(host_data, f)
+        # update node address
+        with open("deploy/settings.json", 'r') as f:  # noqa
+            settings_json = json.load(f)
+        settings_json['EC2_DNS'] = ip.public_ip
+        with open("deploy/settings.json", 'w') as f:  # noqa
+            json.dump(settings_json, f)
+
+    print(_green("Your new elastic IP is {}.".format(ip.public_ip)))

@@ -499,6 +499,17 @@ To associate an elastic IP with your webserver, you can do
      
 *Note: AWS has a soft limit of 5 elastic IP's per account. So if you already have elastic IP's allocated, you may need to delete or reassign them in your AWS management console.*
 
+After you change the IP, you'll also need to change your ALLOWED_HOSTS django setting. The fab command updates the host settings in your config files in the local guide directory you've been working in, 
+but to push those changes to your server you'll need to update your secret databag:
+
+    cd chef_files
+    knife solo data bag create config config_1 --json-file ../deploy/settings.json
+    cd ..
+    
+And re-bootstrap the server to update the settings:
+
+    fab bootstrap:webserver
+
 <a id="code"></a>
 #Automatically Deploy Your Code
 
