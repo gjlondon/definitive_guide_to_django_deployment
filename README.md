@@ -99,13 +99,13 @@ Start off by cloning the Github repo for this project onto your local machine.
 
 The github repo includes a fabfile.py[[7]](#cred_1) which provides all the
 commandline directives we'll need. But fabfiles are pretty intuitive
-to read, so try to follow along with what each command is doing.
+to read so try to follow along with what each command is doing.
 
 
 First, we need to define [AWS](#gloss_aws) settings. In keeping
 with the principles of the [Twelve Factor App](http://12factor.net/)
 we store configuration either in environment variables or in config files which
-are not tracked by VCS. You can you AWS access and secret keys on your
+are not tracked by VCS. You can find your AWS access and secret keys on your
 [AWS security page](https://portal.aws.amazon.com/gp/aws/securityCredentials).
 
     echo '
@@ -120,9 +120,11 @@ are not tracked by VCS. You can you AWS access and secret keys on your
     chmod 600 deploy/environment
 
 
+**Make sure you fill out the values between angle brackets with <your own values>.**
+
 These settings will be exported as enviornment variables in the docker
 container where both fabric and the AWS CLI will read them. We recommend using
-an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 12.04 LTS image.
+an [AMI](#gloss_ami) for a "free-tier" eligible Ubuntu 14.04 LTS image.
 
 If you already have an EC2 SSH key pair that you want to use, make sure you copy it to the deploy folder (otherwise skip this step and we'll create one for you automatically):
 
@@ -176,7 +178,7 @@ do
 We're going to launch two Ubuntu 14.04 LTS servers, one for our web host
 and one for our database. We're using Ubuntu because it it seems to be
 the most popular linux distro right now, and 14.04 because it's a (L)ong (T)erm (S)upport
-version, meaning we have the longest period before it's official
+version, meaning we have the longest period before it's officially
 deprecated and we're forced to deal with an OS upgrade. Depending on what [AMI you choose](http://cloud-images.ubuntu.com/locator/ec2/) in your settings, you may end up with a different version. (If in doubt, choose a i386 ebs-ssd LTS version.)
 
 With boto and Fabric, launching a new instance is very easy:
@@ -190,7 +192,7 @@ provide. You can also provide a lot more configuration options to this
 directive at the command line but the defaults are sensible for now.
 
 It may be a few minutes before new instances are fully started. EC2 reports
-them online when the virtual hardware is up, but Linux takes some time to boot
+them online when the virtual hardware is up but Linux takes some time to boot
 after that.
 
 Now you can ssh into a server:
@@ -482,6 +484,20 @@ If Chef runs all the way through without error (as it should) you'll now have a 
 
 Domain registrars vary greatly on how to change the A-record so check your registrar's instructions.
 
+By default, EC2 provides a "public DNS" listing for instances which looks like ec2-54-166-68-245.compute-1.amazonaws.com
+
+Any time you stop and then start an EC2 instance, the DNS address gets re-assigned. If you're putting your website on one of these nodes, that's not ideal
+because you would have to update your A-Record every time you need to stop the instance for any reason. (And it's even worse because A-Records updates can take 24-48 hours to
+ propogate through the internet so your site may be unreachable for a while.)
+ 
+To avoid that problem, Amazon lets you associate an "Elastic IP" with a given server. An Elastic IP is a fixed IP address that will 
+stay with the the server even if it's stopped.
+ 
+To associate an elastic IP with your webserver, you can do
+ 
+     fab associate_ip:webserver
+     
+*Note: AWS has a soft limit of 5 elastic IP's per account. So if you already have elastic IP's allocated, you may need to delete or reassign them in your AWS management console.*
 
 <a id="code"></a>
 #Automatically Deploy Your Code

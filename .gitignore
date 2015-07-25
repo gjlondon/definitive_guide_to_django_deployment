@@ -24,3 +24,8 @@ deploy/
 nodes/
 chef_files/data_bag_key
 chef_files/data_bag_key
+django_deployment_env
+fab_hosts
+settings.json
+.idea
+aws.cfg

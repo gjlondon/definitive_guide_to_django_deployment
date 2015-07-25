@@ -218,9 +218,25 @@ def bootstrap(name, no_install=False):
 
 
 @task
-def deploy(name):
+def associate_ip(name, no_install=False):
     """
     Bootstrap the specified server. Install chef then run chef solo.
+
+    :param name: The name of the node to be bootstrapped
+    :param no_install: Optionally skip the Chef installation
+    since it takes time and is unneccesary after the first run
+    :return:
+    """
+
+    print(_green("--BOOTSTRAPPING {}--".format(name)))
+    f = open("deploy/fab_hosts/{}.txt".format(name))
+    env.host_string = "ubuntu@{}".format(f.readline().strip())
+    allocate_and_assign_ip(name)
+
+@task
+def deploy(name):
+    """
+    Deploy the github repo to your node.
 
     :param name: The name of the node to be bootstrapped
     :param no_install: Optionally skip the Chef installation
@@ -324,3 +340,43 @@ def deploy_app(name):
             print e
         finally:
             os.rename("chef_files/hold_Berksfile", "chef_files/Berksfile")
+
+
+
+
+    print(_yellow("--RUNNING CHEF--"))
+    node = "./nodes/deploy_node.json".format(name=name)
+
+    with lcd('chef_files'):
+        try:
+            # skip updating the Berkshelf cookbooks to save time
+            os.rename("chef_files/Berksfile", "chef_files/hold_Berksfile")
+            local("knife solo cook -i {key_file} {host} {node}".format(
+                key_file=env.aws_ssh_key_path,
+                host=env.host_string,
+                node=node))
+            restart()
+        except Exception as e:
+            print e
+        finally:
+            os.rename("chef_files/hold_Berksfile", "chef_files/Berksfile")
+
+def allocate_and_assign_ip(name):
+    """
+    """
+
+    print(_green("Assigning an elastic IP to {}...".format(name)))
+
+    conn = connect_to_ec2()
+    filters = {"tag:Name": name}
+    ip = None
+    for reservation in conn.get_all_instances(filters=filters):
+        for instance in reservation.instances:
+            ip = conn.allocate_address()
+            ip.associate(instance.id)
+            break
+        break
+    if ip:
+        f = open("deploy/fab_hosts/{}.txt".format(name), "w")
+        f.write(ip.public_ip)
+        f.close()
