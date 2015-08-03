@@ -120,7 +120,7 @@ are not tracked by VCS. You can find your AWS access and secret keys on your
     chmod 600 deploy/environment
 
 
-**Make sure you fill out the values between angle brackets with <your own values>.**
+**Make sure you fill out the values between angle brackets with \<your own values\>.**
 
 These settings will be exported as enviornment variables in the docker
 container where both fabric and the AWS CLI will read them. We recommend using
