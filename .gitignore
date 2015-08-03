@@ -28,4 +28,4 @@ django_deployment_env
 fab_hosts
 settings.json
 .idea
-aws.cfg
+aws.cfgchef_files/data_bag_key

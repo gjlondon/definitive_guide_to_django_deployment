@@ -253,15 +253,16 @@ def deploy(name):
 
 
 @task
-def restart():
+def restart(name):
     """
     Reload nginx/gunicorn
     """
     with settings(warn_only=True):
         with open(env.app_settings_file) as f:
             app_settings = json.load(f)
-        sudo("supervisorctl restart {app_name}".format(app_name=app_settings["APP_NAME"]))
-        sudo('/etc/init.d/nginx reload')
+        env.key_filename = env.aws_ssh_key_path
+        sudo("sudo supervisorctl restart {app_name}".format(app_name=app_settings["APP_NAME"]), shell=False)
+        sudo('sudo /etc/init.d/nginx reload', shell=False)
 
 
 #----------HELPER FUNCTIONS-----------
@@ -328,40 +329,27 @@ def deploy_app(name):
 
     print(_yellow("--RUNNING CHEF--"))
     node = "./nodes/deploy_node.json".format(name=name)
-
     with lcd('chef_files'):
         try:
             # skip updating the Berkshelf cookbooks to save time
-            os.rename("chef_files/Berksfile", "chef_files/hold_Berksfile")
+
+            try:
+                os.rename("chef_files/Berksfile", "chef_files/hold_Berksfile")
+            except OSError:
+                pass
             local("knife solo cook -i {key_file} {host} {node}".format(
                 key_file=env.aws_ssh_key_path,
                 host=env.host_string,
                 node=node))
-            restart()
+            restart(name)
+
         except Exception as e:
             print e
         finally:
-            os.rename("chef_files/hold_Berksfile", "chef_files/Berksfile")
-
-
-
-
-    print(_yellow("--RUNNING CHEF--"))
-    node = "./nodes/deploy_node.json".format(name=name)
-
-    with lcd('chef_files'):
-        try:
-            # skip updating the Berkshelf cookbooks to save time
-            os.rename("chef_files/Berksfile", "chef_files/hold_Berksfile")
-            local("knife solo cook -i {key_file} {host} {node}".format(
-                key_file=env.aws_ssh_key_path,
-                host=env.host_string,
-                node=node))
-            restart()
-        except Exception as e:
-            print e
-        finally:
-            os.rename("chef_files/hold_Berksfile", "chef_files/Berksfile")
+            try:
+                os.rename("chef_files/hold_Berksfile", "chef_files/Berksfile")
+            except OSError:
+                pass
 
 def allocate_and_assign_ip(name):
     """
