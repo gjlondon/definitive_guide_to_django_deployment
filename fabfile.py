@@ -192,8 +192,8 @@ def terminate_instance(name):
 @task
 def ssh(name):
     """SSH into an instance."""
-    #with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
-    #    host_data = json.load(f)
+    with open(os.path.join(env.ssh_directory, ''.join([name, '.json'])), 'r') as f:  # noqa
+        host_data = json.load(f)
     f = open("deploy/fab_hosts/{}.txt".format(name))
     env.host_string = "ubuntu@{}".format(f.readline().strip())
     with settings(**host_data):
