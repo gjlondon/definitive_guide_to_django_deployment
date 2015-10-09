@@ -688,7 +688,7 @@ Just use them. Also apparently baked into Django 1.6.
 
 In my experience, by far the biggest cause of slowness in Django is I/O or network requests (e.g. calling an external API to supply some data for a widget.) By default, Python blocks the thread making the call until it's done. Gunicorn gives you "workers" which run in separate threads, but if you have four workers and they all block waiting for a long database query then your whole site will just hang until a worker is free (or the request times out.)
 
-You can make things *way* faster by using "green threading" via [gevent](http://www.gevent.org/). Green threading is conceptually complicated (and occasionally buggy) but the basic idea is that one thread can contain many "green" threads. One one green thread runs at a time, but if it needs to wait for I/O it cedes control to another green thread. So your server can accomodate *way* more requests by never blocking the gunicorn worker threads.
+You can make things *way* faster by using "green threading" via [gevent](http://www.gevent.org/). Green threading is conceptually complicated (and occasionally buggy) but the basic idea is that one thread can contain many "green" threads. One one green thread runs at a time, but if it needs to wait for I/O it cedes control to another green thread. So your server can accommodate *way* more requests by never blocking the gunicorn worker threads.
 
 #Wrap up
 
