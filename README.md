@@ -117,7 +117,7 @@ are not tracked by VCS. You can find your AWS access and secret keys on your
     AWS_SECRET_ACCESS_KEY=<YOUR SECRET KEY HERE>
     AWS_DEFAULT_REGION=<YOUR REGION HERE, e.g. us-east-1>
     AWS_SECURITY_GROUP_NAME=<YOUR SECURITY GROUP NAME>
-    AWS_INSTANCE_TYPE=t1.micro
+    AWS_INSTANCE_TYPE=t2.micro
     AWS_AMI_ID=<SEE http://cloud-images.ubuntu.com/locator/ec2/>
     AWS_SSH_KEY_NAME=<YOUR EC2 KEY NAME>
     AWS_SSH_PORT=22' > deploy/environment
