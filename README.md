@@ -218,7 +218,7 @@ If you don't do that, then you need to...
 
 ###Make sure your project is set up correctly:
 
-This guide assumes a standard Django 1.5 project layout with a few small tweaks:
+This guide assumes a standard Django 1.5+ project layout with a few small tweaks:
 
 * Your settings should be comprised of three files:
 
